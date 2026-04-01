@@ -1,0 +1,266 @@
+"""
+Trading Loop
+Orchestrates: signal engine → AI brain → position manager → Kraken CLI
+Two async loops run concurrently:
+  1. main_loop: AI analysis on each cycle, enters new trades
+  2. position_monitor: checks stops/targets every 30s, asks AI to review
+"""
+
+import asyncio
+import time
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import print as rprint
+
+from config import config
+from kraken.cli_wrapper import KrakenCLI
+from kraken.rest_client import KrakenRESTClient
+from data.cmc_client import CMCClient
+from agent.signals import SignalEngine
+from agent.ai_brain import AIBrain
+from agent.position_manager import PositionManager
+from utils.logger import get_logger
+
+logger = get_logger("loop")
+console = Console()
+
+
+class TradingLoop:
+    def __init__(self):
+        logger.info("Initialising ArbMind components...")
+        self.cli = KrakenCLI(paper_mode=config.paper_mode)
+        self.rest = KrakenRESTClient()
+        self.cmc = CMCClient()
+        self.signals = SignalEngine()
+        self.positions = PositionManager(self.cli)
+        self.brain = AIBrain(self.signals, self.cmc, self.positions)
+
+        self._cycle = 0
+        self._last_decision_time = 0
+        self._min_decision_gap = 300  # 5 min minimum between full AI analyses
+
+        logger.info(f"Mode: {'PAPER' if config.paper_mode else '⚠️  LIVE'}")
+        logger.info(f"Capital: ${config.paper_capital:.2f}")
+        logger.info(f"Loop interval: {config.loop_interval}s")
+        logger.info(f"Tradeable alts: {', '.join(config.tradeable_alts)}")
+
+    # ── Main entry ──────────────────────────────────────────────
+
+    async def run(self):
+        """Start both async loops concurrently."""
+        logger.info("Starting trading loops...")
+        await asyncio.gather(
+            self._main_loop(),
+            self._position_monitor(),
+        )
+
+    # ── Loop 1: AI decision loop ─────────────────────────────────
+
+    async def _main_loop(self):
+        """
+        Main cycle: every LOOP_INTERVAL seconds, run a pre-check.
+        If conditions look interesting, invoke the full AI analysis.
+        """
+        while True:
+            self._cycle += 1
+            cycle_start = time.time()
+
+            try:
+                await self._main_cycle()
+            except Exception as e:
+                logger.error(f"Main loop error (cycle {self._cycle}): {e}", exc_info=True)
+
+            elapsed = time.time() - cycle_start
+            sleep_time = max(0, config.loop_interval - elapsed)
+            logger.debug(f"Cycle {self._cycle} took {elapsed:.1f}s. Sleeping {sleep_time:.0f}s.")
+            await asyncio.sleep(sleep_time)
+
+    async def _main_cycle(self):
+        """One iteration of the main loop."""
+        # Quick pre-check: time window + basic canary (saves AI API calls)
+        in_window, window_label = self.signals.is_dip_window()
+        summary = self.positions.get_account_summary()
+
+        self._print_status_bar(in_window, window_label, summary)
+
+        # Respect minimum gap between full AI analyses
+        time_since_last = time.time() - self._last_decision_time
+        if time_since_last < self._min_decision_gap and not in_window:
+            logger.debug(f"Not in window & recent analysis {time_since_last:.0f}s ago — skipping")
+            return
+
+        # If we have 3 open positions already, skip analysis
+        if summary["open_positions"] >= 3:
+            logger.info(f"Max positions open ({summary['open_positions']}/3) — skipping analysis")
+            return
+
+        # Quick canary pre-check (avoids burning AI tokens on cold market)
+        canary = self.signals.get_canary_signal()
+        if not canary["dip_triggered"] and not in_window:
+            next_window = self.signals.minutes_to_next_window()
+            logger.info(
+                f"Canary: BTC={canary['btc']['change_1h_pct']:.2f}% | "
+                f"ETH={canary['eth']['change_1h_pct']:.2f}% | "
+                f"Next window in {next_window}m"
+            )
+            return
+
+        # ── Full AI analysis ──────────────────────────────────────
+        logger.info("Conditions interesting — invoking AI analysis...")
+        self._last_decision_time = time.time()
+
+        decision = await asyncio.get_event_loop().run_in_executor(
+            None, self.brain.analyze_and_decide
+        )
+
+        self._print_decision(decision)
+
+        if decision.decision == "ENTER" and decision.confidence >= 0.6:
+            await self._execute_trades(decision)
+        elif decision.decision == "SKIP":
+            logger.info(f"AI SKIP: {decision.reasoning[:80]}")
+        elif decision.decision == "CLOSE":
+            await self._close_all_positions("AI requested close")
+
+    # ── Loop 2: Position monitor ─────────────────────────────────
+
+    async def _position_monitor(self):
+        """
+        Runs every POSITION_CHECK_INTERVAL seconds.
+        Enforces stops, targets, time-stops, and calls AI for ambiguous positions.
+        """
+        while True:
+            await asyncio.sleep(config.position_check_interval)
+            try:
+                await self._check_positions()
+            except Exception as e:
+                logger.error(f"Position monitor error: {e}", exc_info=True)
+
+    async def _check_positions(self):
+        """Check all positions for stop/target/time-stop triggers."""
+        open_positions = self.positions.get_open_positions()
+        if not open_positions:
+            return
+
+        to_close = self.positions.check_stops_and_targets()
+        for close_info in to_close:
+            pos_id = close_info["id"]
+            reason = close_info["reason"]
+            logger.info(f"Auto-closing {pos_id}: {reason}")
+            self.positions.close_position(pos_id, reason=reason)
+
+        # For positions not auto-closed, ask AI every 30min
+        still_open = self.positions.get_open_positions()
+        for pos in still_open:
+            import datetime
+            opened = datetime.datetime.fromisoformat(pos["opened_at"])
+            age_min = (datetime.datetime.utcnow() - opened).total_seconds() / 60
+            # Check at 30-min intervals after opening
+            if int(age_min) % 30 == 0 and int(age_min) > 0:
+                logger.info(f"AI position review: {pos['symbol']} ({age_min:.0f}m old)")
+                pos_decision = await asyncio.get_event_loop().run_in_executor(
+                    None, self.brain.analyze_position_for_close, pos
+                )
+                logger.info(
+                    f"AI position decision: {pos_decision.action} — {pos_decision.reason[:60]}"
+                )
+                if pos_decision.action == "CLOSE":
+                    self.positions.close_position(pos["id"], reason="ai_review")
+
+    # ── Trade execution ──────────────────────────────────────────
+
+    async def _execute_trades(self, decision):
+        """Execute trades from AI decision in paper mode."""
+        for trade in decision.trades:
+            symbol = trade.get("symbol")
+            if not symbol:
+                continue
+
+            # Validate symbol is in our allowed list
+            if symbol not in config.tradeable_alts:
+                logger.warning(f"AI suggested {symbol} — not in tradeable list, skipping")
+                continue
+
+            opened = self.positions.open_position(
+                symbol=symbol,
+                direction=trade.get("direction", "long"),
+                size_pct=min(trade.get("size_pct_capital", 0.05), config.max_position_pct),
+                entry_type=trade.get("entry_type", "market"),
+                stop_loss_pct=max(trade.get("stop_loss_pct", 0.02), 0.02),
+                take_profit_pct=trade.get("take_profit_pct", 0.04),
+                thesis=trade.get("thesis", ""),
+            )
+
+            if opened:
+                logger.info(
+                    f"✅ Position opened: {symbol} | thesis: {trade.get('thesis', '')[:60]}"
+                )
+            await asyncio.sleep(1)  # Small gap between orders
+
+    async def _close_all_positions(self, reason: str):
+        """Close all open positions."""
+        for pos in self.positions.get_open_positions():
+            self.positions.close_position(pos["id"], reason=reason)
+            await asyncio.sleep(0.5)
+
+    # ── Display helpers ──────────────────────────────────────────
+
+    def _print_status_bar(self, in_window: bool, window_label: str, summary: dict):
+        mode_tag = "[green]PAPER[/green]" if config.paper_mode else "[red]LIVE[/red]"
+        window_tag = f"[yellow]WINDOW: {window_label}[/yellow]" if in_window else "[dim]no window[/dim]"
+        pnl_color = "green" if summary["today_pnl"] >= 0 else "red"
+        console.print(
+            f"[dim]Cycle {self._cycle}[/dim] | {mode_tag} | {window_tag} | "
+            f"Capital: [bold]${summary['capital']:.2f}[/bold] | "
+            f"Today P&L: [{pnl_color}]{summary['today_pnl']:+.2f}[/{pnl_color}] | "
+            f"Positions: {summary['open_positions']}/3 | "
+            f"Win rate: {summary['win_rate_pct']:.0f}%"
+        )
+
+    def _print_decision(self, decision):
+        """Pretty-print AI decision to terminal."""
+        color = {
+            "ENTER": "bold green",
+            "SKIP": "dim",
+            "HOLD": "yellow",
+            "CLOSE": "red",
+        }.get(decision.decision, "white")
+
+        panel_content = (
+            f"Decision: [{color}]{decision.decision}[/{color}]\n"
+            f"Confidence: {decision.confidence:.0%}\n"
+            f"Context: {decision.market_context}\n"
+            f"Reasoning: {decision.reasoning}\n"
+        )
+
+        if decision.trades:
+            panel_content += "\nTrades:\n"
+            for t in decision.trades:
+                panel_content += (
+                    f"  • {t.get('symbol')} {t.get('direction', 'long').upper()} "
+                    f"| stop={t.get('stop_loss_pct', 0):.0%} "
+                    f"| target={t.get('take_profit_pct', 0):.0%}\n"
+                    f"    thesis: {t.get('thesis', '')[:70]}\n"
+                )
+
+        console.print(Panel(panel_content, title="[bold]AI Analysis[/bold]", border_style="blue"))
+
+        if decision.trades:
+            table = Table(title="Proposed Trades", show_header=True)
+            table.add_column("Symbol")
+            table.add_column("Dir")
+            table.add_column("Size%")
+            table.add_column("Stop")
+            table.add_column("Target")
+            table.add_column("Thesis")
+            for t in decision.trades:
+                table.add_row(
+                    t.get("symbol", ""),
+                    t.get("direction", "long"),
+                    f"{t.get('size_pct_capital', 0):.0%}",
+                    f"{t.get('stop_loss_pct', 0):.0%}",
+                    f"{t.get('take_profit_pct', 0):.0%}",
+                    t.get("thesis", "")[:50],
+                )
+            console.print(table)

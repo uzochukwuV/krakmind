@@ -1,0 +1,81 @@
+"""
+Central config — loads from .env and exposes typed settings
+"""
+
+import os
+from dataclasses import dataclass, field
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+@dataclass
+class Config:
+    # Keys
+    anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
+    kraken_api_key: str = field(default_factory=lambda: os.getenv("KRAKEN_API_KEY", ""))
+    kraken_api_secret: str = field(default_factory=lambda: os.getenv("KRAKEN_API_SECRET", ""))
+    kraken_futures_key: str = field(default_factory=lambda: os.getenv("KRAKEN_FUTURES_API_KEY", ""))
+    kraken_futures_secret: str = field(default_factory=lambda: os.getenv("KRAKEN_FUTURES_API_SECRET", ""))
+    cmc_api_key: str = field(default_factory=lambda: os.getenv("CMC_API_KEY", ""))
+
+    # Mode
+    paper_mode: bool = field(default_factory=lambda: os.getenv("PAPER_MODE", "true").lower() == "true")
+
+    # Timing
+    loop_interval: int = field(default_factory=lambda: int(os.getenv("LOOP_INTERVAL_SECONDS", "60")))
+    position_check_interval: int = field(default_factory=lambda: int(os.getenv("POSITION_CHECK_INTERVAL", "30")))
+
+    # Risk params
+    max_position_pct: float = field(default_factory=lambda: float(os.getenv("MAX_POSITION_PCT", "0.05")))
+    stop_loss_pct: float = field(default_factory=lambda: float(os.getenv("STOP_LOSS_PCT", "0.02")))
+    take_profit_pct: float = field(default_factory=lambda: float(os.getenv("TAKE_PROFIT_PCT", "0.04")))
+    paper_capital: float = field(default_factory=lambda: float(os.getenv("PAPER_CAPITAL", "10000.0")))
+
+    # Signal thresholds
+    btc_dip_threshold: float = field(default_factory=lambda: float(os.getenv("BTC_DIP_THRESHOLD", "-1.5")))
+    eth_dip_threshold: float = field(default_factory=lambda: float(os.getenv("ETH_DIP_THRESHOLD", "-1.2")))
+    min_correlation: float = field(default_factory=lambda: float(os.getenv("MIN_CORRELATION", "0.6")))
+
+    # Instruments — futures symbols on Kraken
+    # Canary markers (never traded directly, only as signals)
+    canary_symbols: list = field(default_factory=lambda: ["PF_XBTUSD", "PF_ETHUSD"])
+
+    # Spot pairs for OHLC canary data
+    canary_spot: dict = field(default_factory=lambda: {
+        "PF_XBTUSD": "XXBTZUSD",
+        "PF_ETHUSD": "XETHZUSD",
+    })
+
+    # Top-20 tradeable alts on Kraken Futures (excludes BTC/ETH)
+    tradeable_alts: list = field(default_factory=lambda: [
+        "PF_SOLUSD",   # Solana
+        "PF_BNBUSD",   # BNB
+        "PF_XRPUSD",   # XRP
+        "PF_ADAUSD",   # Cardano
+        "PF_AVAXUSD",  # Avalanche
+        "PF_DOTUSD",   # Polkadot
+        "PF_MATICUSD", # Polygon
+        "PF_LINKUSD",  # Chainlink
+        "PF_LTCUSD",   # Litecoin
+        "PF_UNIUSD",   # Uniswap
+    ])
+
+    # CMC slugs for top-20 market data
+    cmc_slugs: list = field(default_factory=lambda: [
+        "bitcoin", "ethereum", "solana", "bnb", "xrp",
+        "cardano", "avalanche", "polkadot", "polygon",
+        "chainlink", "litecoin", "uniswap", "cosmos",
+        "near-protocol", "stellar", "internet-computer",
+        "aptos", "filecoin", "vechain", "the-graph"
+    ])
+
+    # DIP windows in UTC+1 (hour_start, min_start, hour_end, min_end)
+    dip_windows_utc1: list = field(default_factory=lambda: [
+        (5, 30, 6, 30),   # 6AM UTC+1 window
+        (15, 0, 16, 30),  # 4PM UTC+1 window
+    ])
+
+
+# Singleton
+config = Config()
