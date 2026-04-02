@@ -143,10 +143,9 @@ class KrakenCLI:
     def paper_buy(self, symbol: str, size: float, order_type: str = "market",
                   limit_price: Optional[float] = None) -> dict:
         """
-        Place a paper buy order via kraken paper commands.
-        Returns paper order confirmation dict.
+        Place a paper buy order: kraken paper buy <PAIR> <VOLUME> [--type market|limit] [--price N]
         """
-        args = ["paper", "order", "buy", symbol, str(size), "--type", order_type]
+        args = ["paper", "buy", symbol, str(size), "--type", order_type]
         if order_type == "limit" and limit_price:
             args += ["--price", str(limit_price)]
         logger.info(f"[PAPER] BUY {size} {symbol} @ {'market' if not limit_price else limit_price}")
@@ -154,7 +153,10 @@ class KrakenCLI:
 
     def paper_sell(self, symbol: str, size: float, order_type: str = "market",
                    limit_price: Optional[float] = None) -> dict:
-        args = ["paper", "order", "sell", symbol, str(size), "--type", order_type]
+        """
+        Place a paper sell order: kraken paper sell <PAIR> <VOLUME> [--type market|limit] [--price N]
+        """
+        args = ["paper", "sell", symbol, str(size), "--type", order_type]
         if order_type == "limit" and limit_price:
             args += ["--price", str(limit_price)]
         logger.info(f"[PAPER] SELL {size} {symbol} @ {'market' if not limit_price else limit_price}")
@@ -162,7 +164,7 @@ class KrakenCLI:
 
     def paper_reset(self) -> dict:
         """Reset paper trading state."""
-        return self._run(["paper", "reset"])
+        return self._run(["paper", "reset", "--yes"])
 
     def paper_positions(self) -> dict:
         """Get current paper positions."""
