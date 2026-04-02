@@ -99,9 +99,13 @@ class TradingLoop:
         canary = self.signals.get_canary_signal()
         if not canary["dip_triggered"] and not in_window:
             next_window = self.signals.minutes_to_next_window()
+            btc_chg = canary['btc']['change_1h_pct']
+            eth_chg = canary['eth']['change_1h_pct']
+            btc_str = f"{btc_chg:.2f}%" if btc_chg is not None else "N/A"
+            eth_str = f"{eth_chg:.2f}%" if eth_chg is not None else "N/A"
             logger.info(
-                f"Canary: BTC={canary['btc']['change_1h_pct']:.2f}% | "
-                f"ETH={canary['eth']['change_1h_pct']:.2f}% | "
+                f"Canary: BTC={btc_str} | "
+                f"ETH={eth_str} | "
                 f"Next window in {next_window}m"
             )
             return
