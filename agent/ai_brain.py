@@ -60,6 +60,12 @@ Decision rules (follow strictly):
 6. Never exceed 5% capital per trade. Max 3 concurrent positions.
 7. Confidence < 0.6 → SKIP.
 8. Always set stop_loss_pct >= 0.02.
+9. SIGNAL QUALITY FILTERS (prefer alts with all three):
+   a. RSI < 35 on the alt (oversold = mean-reversion likely). Prefer this strongly.
+   b. Volume spike on BTC (volume_ratio > 1.5) confirms the move is real.
+   c. Alt dipping > 0.3% in 1h alongside BTC/ETH.
+   If daily_loss_limit_hit = true → output SKIP immediately (capital protection day).
+10. signal_quality score 2–3 = strong setup. Score 0–1 = weak, require confidence >= 0.75.
 
 You will receive a full market snapshot. Analyse it and output EXACTLY this JSON (no other text after it):
 
@@ -67,7 +73,7 @@ You will receive a full market snapshot. Analyse it and output EXACTLY this JSON
 {
   "decision": "ENTER",
   "confidence": 0.75,
-  "reasoning": "2-3 sentence explanation",
+  "reasoning": "2-3 sentence explanation referencing RSI, volume, correlation",
   "trades": [
     {
       "symbol": "PF_SOLUSD",
@@ -76,7 +82,7 @@ You will receive a full market snapshot. Analyse it and output EXACTLY this JSON
       "entry_type": "market",
       "stop_loss_pct": 0.02,
       "take_profit_pct": 0.04,
-      "thesis": "SOL corr=0.82, dipped -2.1%, recovery expected"
+      "thesis": "SOL corr=0.82, RSI=28 (oversold), vol_spike=true, dipped -2.1%"
     }
   ],
   "market_context": "one-line summary",
@@ -107,15 +113,26 @@ class ContextBuilder:
             in_window, window_label = self.signals.is_dip_window()
             next_window = self.signals.minutes_to_next_window()
             canary = self.signals.get_canary_signal()
+            btc = canary['btc']
+            eth = canary['eth']
+            btc_rsi = btc.get('rsi', {})
+            eth_rsi = eth.get('rsi', {})
+            btc_vol = btc.get('volume', {})
+            eth_vol = eth.get('volume', {})
             sections.append(f"""## Time & Canary Signals
 - In trading window: {in_window} ({window_label if in_window else f'next in {next_window}m'})
-- BTC 1h change: {self._fmt(canary['btc']['change_1h_pct'])}% (threshold: {canary['btc']['threshold']}%)
-- BTC 15m change: {self._fmt(canary['btc']['change_15m_pct'])}%
-- BTC price: ${self._fmt(canary['btc']['price'], 0)}
-- ETH 1h change: {self._fmt(canary['eth']['change_1h_pct'])}% (threshold: {canary['eth']['threshold']}%)
-- ETH 15m change: {self._fmt(canary['eth']['change_15m_pct'])}%
-- ETH price: ${self._fmt(canary['eth']['price'], 0)}
-- Dip triggered: {canary['dip_triggered']}""")
+- BTC 1h change: {self._fmt(btc['change_1h_pct'])}% (threshold: {btc['threshold']}%)
+- BTC 15m change: {self._fmt(btc['change_15m_pct'])}%
+- BTC price: ${self._fmt(btc['price'], 0)}
+- BTC RSI(14): {self._fmt(btc_rsi.get('rsi'))} [{btc_rsi.get('signal', 'unknown')}]
+- BTC volume_ratio (1h vs 20-avg): {self._fmt(btc_vol.get('volume_ratio'))} [spike={btc_vol.get('spike')}]
+- ETH 1h change: {self._fmt(eth['change_1h_pct'])}% (threshold: {eth['threshold']}%)
+- ETH 15m change: {self._fmt(eth['change_15m_pct'])}%
+- ETH price: ${self._fmt(eth['price'], 0)}
+- ETH RSI(14): {self._fmt(eth_rsi.get('rsi'))} [{eth_rsi.get('signal', 'unknown')}]
+- ETH volume_ratio (1h vs 20-avg): {self._fmt(eth_vol.get('volume_ratio'))} [spike={eth_vol.get('spike')}]
+- Dip triggered: {canary['dip_triggered']}
+- Strong signal (dip+RSI+vol): {canary.get('strong_signal', False)}""")
         except Exception as e:
             sections.append(f"## Time & Canary Signals\nError: {e}")
 

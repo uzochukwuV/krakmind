@@ -2,6 +2,11 @@
 Position Manager
 Tracks open paper positions, computes P&L, enforces stops/targets.
 Persists state to a JSON file so the agent survives restarts.
+
+Improvements (v2):
+- Trailing stops: move stop to break-even at +2%, lock profit at +3%
+- Daily loss limit: halt new trades if down >3% on the day
+- Peak capital tracking for drawdown monitoring
 """
 
 import json
@@ -16,6 +21,11 @@ from kraken_wrappers.rest_client import KrakenRESTClient
 logger = get_logger("positions")
 
 STATE_FILE = "data/paper_positions.json"
+
+DAILY_LOSS_LIMIT_PCT = float(os.getenv("DAILY_LOSS_LIMIT_PCT", "0.03"))   # halt if down 3% today
+TRAILING_BREAKEVEN_PCT = float(os.getenv("TRAILING_BREAKEVEN_PCT", "0.02"))  # move stop to entry at +2%
+TRAILING_LOCK_PCT = float(os.getenv("TRAILING_LOCK_PCT", "0.03"))            # lock in 1% profit at +3%
+TRAILING_LOCK_BUFFER = float(os.getenv("TRAILING_LOCK_BUFFER", "0.01"))      # stop placed 1% above entry when locking
 
 
 class PositionManager:
@@ -34,9 +44,11 @@ class PositionManager:
                     return json.load(f)
             except Exception:
                 pass
+        capital = config.paper_capital
         return {
-            "capital": config.paper_capital,
+            "capital": capital,
             "deployed": 0.0,
+            "peak_capital": capital,
             "positions": {},
             "closed_trades": [],
             "stats": {
@@ -46,7 +58,10 @@ class PositionManager:
                 "total_pnl": 0.0,
                 "today_trades": 0,
                 "today_pnl": 0.0,
+                "day_start_capital": capital,
                 "last_reset_date": str(datetime.date.today()),
+                "trailing_stop_activations": 0,
+                "daily_loss_halts": 0,
             }
         }
 
@@ -59,13 +74,32 @@ class PositionManager:
         if self._state["stats"].get("last_reset_date") != today:
             self._state["stats"]["today_trades"] = 0
             self._state["stats"]["today_pnl"] = 0.0
+            self._state["stats"]["day_start_capital"] = round(self._state["capital"], 2)
             self._state["stats"]["last_reset_date"] = today
             self._save_state()
 
-    # ── Position ops ────────────────────────────────────────────
+    # ── Risk guards ─────────────────────────────────────────────
+
+    def is_daily_loss_limit_hit(self) -> bool:
+        """
+        Returns True if today's losses exceed DAILY_LOSS_LIMIT_PCT of day-start capital.
+        When True, no new positions should be opened.
+        """
+        self._reset_daily_stats_if_needed()
+        day_start = self._state["stats"].get("day_start_capital", self._state["capital"])
+        today_pnl = self._state["stats"]["today_pnl"]
+        if day_start <= 0:
+            return False
+        loss_pct = today_pnl / day_start
+        return loss_pct <= -DAILY_LOSS_LIMIT_PCT
 
     def can_open_position(self, size_pct: float) -> tuple[bool, str]:
         """Check if a new position is allowed under risk rules."""
+        if self.is_daily_loss_limit_hit():
+            self._state["stats"]["daily_loss_halts"] = self._state["stats"].get("daily_loss_halts", 0) + 1
+            pnl = self._state["stats"]["today_pnl"]
+            return False, f"Daily loss limit hit (today P&L: ${pnl:.2f}, limit: {DAILY_LOSS_LIMIT_PCT*100:.0f}%)"
+
         positions = self._state["positions"]
         capital = self._state["capital"]
         deployed = self._state["deployed"]
@@ -75,25 +109,87 @@ class PositionManager:
 
         required = capital * size_pct
         if deployed + required > capital * 0.30:
-            return False, f"Max 30% capital deployment reached (deployed={deployed:.2f}, capital={capital:.2f})"
+            return False, f"Max 30% capital deployment reached (deployed={deployed:.2f})"
 
         return True, "ok"
+
+    # ── Trailing stop logic ──────────────────────────────────────
+
+    def update_trailing_stops(self):
+        """
+        Adjust stop prices as trades move in favour:
+        - At +TRAILING_BREAKEVEN_PCT: move stop to entry (break-even)
+        - At +TRAILING_LOCK_PCT: move stop to entry + TRAILING_LOCK_BUFFER (lock profit)
+        """
+        for pos_id, pos in self._state["positions"].items():
+            price = self._get_current_price(pos["spot_pair"])
+            if not price:
+                continue
+
+            entry = pos["entry_price"]
+            direction = pos["direction"]
+            current_stop = pos["stop_price"]
+            trailing_stage = pos.get("trailing_stage", 0)  # 0=none, 1=breakeven, 2=locked
+
+            if direction == "long":
+                pnl_pct = (price - entry) / entry
+                # Stage 2: lock in profit — stop moves to entry + buffer
+                if pnl_pct >= TRAILING_LOCK_PCT and trailing_stage < 2:
+                    new_stop = entry * (1 + TRAILING_LOCK_BUFFER)
+                    if new_stop > current_stop:
+                        self._state["positions"][pos_id]["stop_price"] = round(new_stop, 6)
+                        self._state["positions"][pos_id]["trailing_stage"] = 2
+                        self._state["stats"]["trailing_stop_activations"] = (
+                            self._state["stats"].get("trailing_stop_activations", 0) + 1
+                        )
+                        logger.info(
+                            f"[TRAIL LOCK] {pos['symbol']} | stop moved to ${new_stop:.4f} "
+                            f"(+{TRAILING_LOCK_BUFFER*100:.0f}% above entry, pnl={pnl_pct*100:.2f}%)"
+                        )
+                # Stage 1: break-even — stop moves to entry
+                elif pnl_pct >= TRAILING_BREAKEVEN_PCT and trailing_stage < 1:
+                    new_stop = entry  # break-even
+                    if new_stop > current_stop:
+                        self._state["positions"][pos_id]["stop_price"] = round(new_stop, 6)
+                        self._state["positions"][pos_id]["trailing_stage"] = 1
+                        self._state["stats"]["trailing_stop_activations"] = (
+                            self._state["stats"].get("trailing_stop_activations", 0) + 1
+                        )
+                        logger.info(
+                            f"[TRAIL BE] {pos['symbol']} | stop moved to break-even ${new_stop:.4f} "
+                            f"(pnl={pnl_pct*100:.2f}%)"
+                        )
+            else:  # short
+                pnl_pct = (entry - price) / entry
+                if pnl_pct >= TRAILING_LOCK_PCT and trailing_stage < 2:
+                    new_stop = entry * (1 - TRAILING_LOCK_BUFFER)
+                    if new_stop < current_stop:
+                        self._state["positions"][pos_id]["stop_price"] = round(new_stop, 6)
+                        self._state["positions"][pos_id]["trailing_stage"] = 2
+                        logger.info(f"[TRAIL LOCK] {pos['symbol']} short | stop moved to ${new_stop:.4f}")
+                elif pnl_pct >= TRAILING_BREAKEVEN_PCT and trailing_stage < 1:
+                    new_stop = entry
+                    if new_stop < current_stop:
+                        self._state["positions"][pos_id]["stop_price"] = round(new_stop, 6)
+                        self._state["positions"][pos_id]["trailing_stage"] = 1
+                        logger.info(f"[TRAIL BE] {pos['symbol']} short | stop moved to break-even ${new_stop:.4f}")
+
+        self._save_state()
+
+    # ── Position ops ────────────────────────────────────────────
 
     def open_position(self, symbol: str, direction: str, size_pct: float,
                       entry_type: str = "market",
                       stop_loss_pct: float = 0.02,
                       take_profit_pct: float = 0.04,
                       thesis: str = "") -> Optional[dict]:
-        """
-        Open a paper position. Returns position dict or None if rejected.
-        """
+        """Open a paper position. Returns position dict or None if rejected."""
         self._reset_daily_stats_if_needed()
         allowed, reason = self.can_open_position(size_pct)
         if not allowed:
             logger.warning(f"Position rejected for {symbol}: {reason}")
             return None
 
-        # Get current price via REST (for precise entry)
         spot_pair = self._get_spot_pair(symbol)
         entry_price = self._get_current_price(spot_pair)
         if not entry_price:
@@ -105,19 +201,12 @@ class PositionManager:
         quantity = position_value / entry_price
 
         # Execute paper order via CLI
+        cli_symbol = spot_pair.replace("XXBT", "BTC").replace("X", "").replace("Z", "")
         try:
             if direction == "long":
-                order_result = self.cli.paper_buy(
-                    symbol=spot_pair.replace("XXBT", "BTC").replace("X", "").replace("Z", ""),
-                    size=round(quantity, 4),
-                    order_type=entry_type,
-                )
+                order_result = self.cli.paper_buy(symbol=cli_symbol, size=round(quantity, 4), order_type=entry_type)
             else:
-                order_result = self.cli.paper_sell(
-                    symbol=spot_pair.replace("XXBT", "BTC").replace("X", "").replace("Z", ""),
-                    size=round(quantity, 4),
-                    order_type=entry_type,
-                )
+                order_result = self.cli.paper_sell(symbol=cli_symbol, size=round(quantity, 4), order_type=entry_type)
         except Exception as e:
             logger.warning(f"CLI paper order failed, simulating: {e}")
             order_result = {"status": "simulated"}
@@ -144,6 +233,7 @@ class PositionManager:
             "order_result": order_result,
             "unrealized_pnl": 0.0,
             "unrealized_pnl_pct": 0.0,
+            "trailing_stage": 0,  # 0=none, 1=break-even, 2=profit-locked
         }
 
         self._state["positions"][position_id] = position
@@ -166,7 +256,6 @@ class PositionManager:
             logger.warning(f"Position {position_id} not found")
             return None
 
-        # Get exit price
         exit_price = self._get_current_price(pos["spot_pair"])
         if not exit_price:
             logger.error(f"Cannot get exit price for {pos['spot_pair']}")
@@ -195,8 +284,8 @@ class PositionManager:
             ),
         }
 
-        # Update stats
         self._state["capital"] += pnl
+        self._state["peak_capital"] = max(self._state.get("peak_capital", 0), self._state["capital"])
         self._state["deployed"] = max(0, self._state["deployed"] - pos["position_value"])
         self._state["stats"]["total_pnl"] += pnl
         self._state["stats"]["today_pnl"] += pnl
@@ -210,10 +299,11 @@ class PositionManager:
         self._save_state()
 
         emoji = "✅" if pnl > 0 else "❌"
+        trail_tag = f" [trail_stage={pos.get('trailing_stage',0)}]" if pos.get("trailing_stage", 0) > 0 else ""
         logger.info(
             f"{emoji} [PAPER CLOSE] {pos['symbol']} | "
             f"pnl={pnl:+.2f} ({pnl_pct:+.2f}%) | "
-            f"reason={reason} | duration={closed['duration_minutes']}m"
+            f"reason={reason}{trail_tag} | duration={closed['duration_minutes']}m"
         )
         return closed
 
@@ -239,8 +329,11 @@ class PositionManager:
     def check_stops_and_targets(self) -> list[dict]:
         """
         Check all open positions against stop/target levels.
-        Returns list of positions that should be closed and why.
+        Applies trailing stop updates first, then checks levels.
+        Returns list of positions to close and why.
         """
+        self.update_trailing_stops()
+
         to_close = []
         for pos_id, pos in self._state["positions"].items():
             price = pos.get("current_price") or self._get_current_price(pos["spot_pair"])
@@ -282,9 +375,12 @@ class PositionManager:
         total = stats["total_trades"]
         wins = stats["wins"]
         win_rate = (wins / total * 100) if total > 0 else 0
+        day_start = stats.get("day_start_capital", self._state["capital"])
+        today_loss_pct = (stats["today_pnl"] / day_start * 100) if day_start > 0 else 0
 
         return {
             "capital": round(self._state["capital"], 2),
+            "peak_capital": round(self._state.get("peak_capital", self._state["capital"]), 2),
             "deployed": round(self._state["deployed"], 2),
             "exposure_pct": round(self._state["deployed"] / self._state["capital"] * 100, 1),
             "open_positions": len(self._state["positions"]),
@@ -295,12 +391,15 @@ class PositionManager:
             "total_pnl": round(stats["total_pnl"], 2),
             "today_trades": stats["today_trades"],
             "today_pnl": round(stats["today_pnl"], 2),
+            "today_loss_pct": round(today_loss_pct, 2),
+            "daily_loss_limit_hit": self.is_daily_loss_limit_hit(),
+            "daily_loss_limit_pct": DAILY_LOSS_LIMIT_PCT * 100,
+            "trailing_stop_activations": stats.get("trailing_stop_activations", 0),
             "paper_mode": config.paper_mode,
         }
 
     # ── Helpers ──────────────────────────────────────────────────
 
-    # Futures → Spot pair mapping
     FUTURES_TO_SPOT = {
         "PF_SOLUSD":   "SOLUSD",
         "PF_XRPUSD":   "XXRPZUSD",
@@ -313,6 +412,7 @@ class PositionManager:
         "PF_MATICUSD": "MATICUSD",
         "PF_XBTUSD":   "XXBTZUSD",
         "PF_ETHUSD":   "XETHZUSD",
+        "PF_BNBUSD":   "BNBUSD",
     }
 
     def _get_spot_pair(self, futures_symbol: str) -> str:

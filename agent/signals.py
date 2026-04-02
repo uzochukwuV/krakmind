@@ -2,7 +2,11 @@
 Signal engine
 Computes: regime classification, time window gate, BTC/ETH canary signals,
 rolling correlation matrix between BTC and alts.
-All outputs feed the AI brain — the AI makes the final call.
+
+Improvements (v2):
+- RSI (14-period) on BTC, ETH, and each alt candidate
+- Volume spike detection (current 1h vol vs 20-period average)
+- Both fed to AI brain as confirmation filters
 """
 
 import datetime
@@ -18,11 +22,16 @@ logger = get_logger("signals")
 
 WAT = pytz.timezone("Africa/Lagos")  # UTC+1, same as your dip windows
 
+RSI_PERIOD = 14
+RSI_OVERSOLD = 35.0       # RSI below this = oversold = good entry signal
+RSI_OVERBOUGHT = 65.0     # RSI above this = overbought = skip
+VOLUME_SPIKE_RATIO = 1.5  # current vol > 1.5× 20-period avg = spike confirmation
+VOLUME_LOOKBACK = 20      # periods for volume moving average
+
 
 class SignalEngine:
     def __init__(self):
         self.rest = KrakenRESTClient()
-        # Rolling candle store: pair → list of candle dicts
         self._candle_cache: dict[str, list] = {}
         self._cache_ts: dict[str, float] = {}
         self._cache_ttl = 60  # seconds
@@ -30,10 +39,7 @@ class SignalEngine:
     # ── Time window gate ────────────────────────────────────────
 
     def is_dip_window(self) -> tuple[bool, str]:
-        """
-        Returns (is_in_window, window_label).
-        Uses UTC+1 (WAT / Lagos time) matching your 4PM and 6AM windows.
-        """
+        """Returns (is_in_window, window_label). Uses WAT (UTC+1)."""
         now = datetime.datetime.now(tz=WAT)
         for (sh, sm, eh, em) in config.dip_windows_utc1:
             start = now.replace(hour=sh, minute=sm, second=0, microsecond=0)
@@ -81,10 +87,7 @@ class SignalEngine:
         return df.set_index("time").sort_index()
 
     def pct_change_n_candles(self, pair: str, n: int = 4, interval: int = 15) -> Optional[float]:
-        """
-        % price change over last n candles of given interval.
-        Positive = price up, negative = dip.
-        """
+        """% price change over last n candles. Negative = dip."""
         candles = self._get_candles(pair, interval)
         if len(candles) < n + 1:
             return None
@@ -100,17 +103,94 @@ class SignalEngine:
             return None
         return float(candles[-1][4])
 
+    # ── RSI ─────────────────────────────────────────────────────
+
+    def compute_rsi(self, pair: str, period: int = RSI_PERIOD, interval: int = 15) -> Optional[float]:
+        """
+        Computes RSI using Wilder's smoothing (standard).
+        Returns float 0–100, or None if insufficient data.
+        Interpretation: <35 = oversold (entry signal), >65 = overbought (skip).
+        """
+        candles = self._get_candles(pair, interval)
+        if len(candles) < period + 5:
+            return None
+
+        df = self._candles_to_df(candles)
+        closes = df["close"].dropna()
+        if len(closes) < period + 1:
+            return None
+
+        delta = closes.diff()
+        gain = delta.clip(lower=0)
+        loss = (-delta).clip(lower=0)
+
+        # Wilder's smoothed averages
+        avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean()
+
+        rs = avg_gain / avg_loss.replace(0, float("nan"))
+        rsi = 100 - (100 / (1 + rs))
+        value = rsi.iloc[-1]
+        return round(float(value), 2) if not np.isnan(value) else None
+
+    def rsi_signal(self, pair: str, interval: int = 15) -> dict:
+        """Returns RSI value plus interpretation for a given pair."""
+        rsi = self.compute_rsi(pair, interval=interval)
+        if rsi is None:
+            return {"rsi": None, "oversold": None, "overbought": None, "signal": "unknown"}
+        return {
+            "rsi": rsi,
+            "oversold": rsi < RSI_OVERSOLD,
+            "overbought": rsi > RSI_OVERBOUGHT,
+            "signal": "oversold" if rsi < RSI_OVERSOLD else ("overbought" if rsi > RSI_OVERBOUGHT else "neutral"),
+        }
+
+    # ── Volume confirmation ──────────────────────────────────────
+
+    def compute_volume_ratio(self, pair: str, interval: int = 60,
+                             lookback: int = VOLUME_LOOKBACK) -> Optional[float]:
+        """
+        Returns current period volume / N-period average volume.
+        Ratio > VOLUME_SPIKE_RATIO means elevated volume = confirms the move.
+        Uses 60-min candles by default for volume comparison.
+        """
+        candles = self._get_candles(pair, interval)
+        if len(candles) < lookback + 1:
+            return None
+
+        df = self._candles_to_df(candles)
+        vols = df["volume"].dropna()
+        if len(vols) < lookback + 1:
+            return None
+
+        current_vol = float(vols.iloc[-1])
+        avg_vol = float(vols.iloc[-(lookback + 1):-1].mean())
+        if avg_vol == 0:
+            return None
+        return round(current_vol / avg_vol, 3)
+
+    def volume_signal(self, pair: str, interval: int = 60) -> dict:
+        """Returns volume ratio and spike flag."""
+        ratio = self.compute_volume_ratio(pair, interval=interval)
+        if ratio is None:
+            return {"volume_ratio": None, "spike": None, "signal": "unknown"}
+        return {
+            "volume_ratio": ratio,
+            "spike": ratio >= VOLUME_SPIKE_RATIO,
+            "signal": "spike" if ratio >= VOLUME_SPIKE_RATIO else "normal",
+        }
+
     # ── Canary signals ──────────────────────────────────────────
 
     def get_canary_signal(self) -> dict:
         """
-        Compute BTC + ETH canary dip signals.
-        Returns structured dict the AI will evaluate.
+        Compute BTC + ETH canary dip signals, now including RSI and volume data.
+        The AI uses all of these to make the final entry call.
         """
         btc_spot = config.canary_spot["PF_XBTUSD"]   # XXBTZUSD
         eth_spot = config.canary_spot["PF_ETHUSD"]   # XETHZUSD
 
-        btc_1h  = self.pct_change_n_candles(btc_spot, n=4, interval=15)   # 4×15 = 60m
+        btc_1h  = self.pct_change_n_candles(btc_spot, n=4, interval=15)
         btc_15m = self.pct_change_n_candles(btc_spot, n=1, interval=15)
         eth_1h  = self.pct_change_n_candles(eth_spot, n=4, interval=15)
         eth_15m = self.pct_change_n_candles(eth_spot, n=1, interval=15)
@@ -118,19 +198,37 @@ class SignalEngine:
         btc_price = self.current_price(btc_spot)
         eth_price = self.current_price(eth_spot)
 
+        # RSI for BTC and ETH
+        btc_rsi = self.rsi_signal(btc_spot)
+        eth_rsi = self.rsi_signal(eth_spot)
+
+        # Volume spikes
+        btc_vol = self.volume_signal(btc_spot)
+        eth_vol = self.volume_signal(eth_spot)
+
         dip_triggered = (
             btc_1h is not None and btc_1h <= config.btc_dip_threshold and
             eth_1h is not None and eth_1h <= config.eth_dip_threshold
         )
 
+        # Strong signal = dip + RSI oversold + volume spike
+        strong_signal = (
+            dip_triggered and
+            btc_rsi.get("oversold") is True and
+            btc_vol.get("spike") is True
+        )
+
         return {
             "dip_triggered": dip_triggered,
+            "strong_signal": strong_signal,
             "btc": {
                 "price": btc_price,
                 "change_1h_pct": btc_1h,
                 "change_15m_pct": btc_15m,
                 "threshold": config.btc_dip_threshold,
                 "breached": btc_1h is not None and btc_1h <= config.btc_dip_threshold,
+                "rsi": btc_rsi,
+                "volume": btc_vol,
             },
             "eth": {
                 "price": eth_price,
@@ -138,6 +236,8 @@ class SignalEngine:
                 "change_15m_pct": eth_15m,
                 "threshold": config.eth_dip_threshold,
                 "breached": eth_1h is not None and eth_1h <= config.eth_dip_threshold,
+                "rsi": eth_rsi,
+                "volume": eth_vol,
             }
         }
 
@@ -149,7 +249,7 @@ class SignalEngine:
         Uses BTC 20-SMA slope + 200-SMA relationship on daily candles.
         """
         btc_spot = config.canary_spot["PF_XBTUSD"]
-        daily = self._get_candles(btc_spot, interval=1440)  # 1D candles
+        daily = self._get_candles(btc_spot, interval=1440)
         if len(daily) < 25:
             return {"regime": "UNCERTAIN", "reason": "Insufficient daily candle history"}
 
@@ -160,7 +260,6 @@ class SignalEngine:
         sma200 = closes.rolling(200).mean().iloc[-1] if len(closes) >= 200 else None
         current = closes.iloc[-1]
 
-        # SMA slope over 5 days
         sma20_5d_ago = closes.rolling(20).mean().iloc[-6] if len(closes) >= 25 else sma20
         sma20_slope = (sma20 - sma20_5d_ago) / sma20_5d_ago * 100
 
@@ -187,7 +286,6 @@ class SignalEngine:
 
     # ── Correlation matrix ──────────────────────────────────────
 
-    # Spot pair mapping for alts (Kraken spot pairs for OHLC)
     ALT_SPOT_PAIRS = {
         "PF_SOLUSD":   "SOLUSD",
         "PF_XRPUSD":   "XXRPZUSD",
@@ -201,12 +299,7 @@ class SignalEngine:
     }
 
     def compute_correlation_matrix(self, interval: int = 15, lookback_candles: int = 48) -> pd.DataFrame:
-        """
-        Compute rolling correlation of each alt vs BTC over last N candles.
-        interval: candle interval in minutes
-        lookback_candles: number of candles to use (48 × 15min = 12 hours)
-        Returns DataFrame: index=alt_symbol, columns=['correlation', 'pct_change_1h', 'current_price']
-        """
+        """Compute rolling correlation of each alt vs BTC over last N candles."""
         btc_candles = self._get_candles(config.canary_spot["PF_XBTUSD"], interval)
         if not btc_candles:
             return pd.DataFrame()
@@ -223,7 +316,6 @@ class SignalEngine:
                 alt_df = self._candles_to_df(alt_candles).tail(lookback_candles)
                 alt_returns = alt_df["close"].pct_change().dropna()
 
-                # Align on common timestamps
                 aligned = pd.concat([btc_returns.rename("btc"), alt_returns.rename("alt")], axis=1).dropna()
                 if len(aligned) < 8:
                     continue
@@ -232,12 +324,20 @@ class SignalEngine:
                 alt_change_1h = self.pct_change_n_candles(spot_pair, n=4, interval=interval)
                 alt_price = self.current_price(spot_pair)
 
+                # RSI + volume for each alt
+                alt_rsi = self.rsi_signal(spot_pair, interval=interval)
+                alt_vol = self.volume_signal(spot_pair, interval=60)
+
                 rows.append({
                     "futures_symbol": futures_sym,
                     "spot_pair": spot_pair,
                     "correlation": round(corr, 3),
                     "change_1h_pct": alt_change_1h,
                     "current_price": alt_price,
+                    "rsi": alt_rsi.get("rsi"),
+                    "rsi_oversold": alt_rsi.get("oversold"),
+                    "volume_ratio": alt_vol.get("volume_ratio"),
+                    "volume_spike": alt_vol.get("spike"),
                     "lookback_candles": len(aligned),
                 })
             except Exception as e:
@@ -253,8 +353,8 @@ class SignalEngine:
 
     def get_high_correlation_alts(self, min_corr: Optional[float] = None) -> list[dict]:
         """
-        Return alts with correlation >= threshold to BTC, currently dipping.
-        These are the best candidates for mean-reversion longs.
+        Return alts with correlation >= threshold to BTC.
+        Now includes RSI and volume data for each candidate.
         """
         threshold = min_corr or config.min_correlation
         matrix = self.compute_correlation_matrix()
@@ -264,6 +364,8 @@ class SignalEngine:
         candidates = []
         for sym, row in matrix.iterrows():
             if row["correlation"] >= threshold and row.get("change_1h_pct") is not None:
+                rsi_val = row.get("rsi")
+                vol_ratio = row.get("volume_ratio")
                 candidates.append({
                     "symbol": sym,
                     "spot_pair": row["spot_pair"],
@@ -271,15 +373,26 @@ class SignalEngine:
                     "change_1h_pct": row["change_1h_pct"],
                     "current_price": row["current_price"],
                     "dipping": row["change_1h_pct"] < -0.3,
+                    "rsi": rsi_val,
+                    "rsi_oversold": row.get("rsi_oversold"),
+                    "volume_ratio": vol_ratio,
+                    "volume_spike": row.get("volume_spike"),
+                    # Combined quality score: dipping + oversold RSI + volume spike
+                    "signal_quality": sum([
+                        1 if row["change_1h_pct"] < -0.3 else 0,
+                        1 if row.get("rsi_oversold") is True else 0,
+                        1 if row.get("volume_spike") is True else 0,
+                    ]),
                 })
+
+        # Sort by signal quality first, then correlation
+        candidates.sort(key=lambda x: (x["signal_quality"], x["correlation"]), reverse=True)
         return candidates
 
     # ── Full signal snapshot ────────────────────────────────────
 
     def get_full_signal_snapshot(self) -> dict:
-        """
-        One call returns everything the AI needs to make a decision.
-        """
+        """One call returns everything the AI needs to make a decision."""
         in_window, window_label = self.is_dip_window()
         canary = self.get_canary_signal()
         regime = self.classify_regime()
@@ -300,7 +413,6 @@ class SignalEngine:
             ),
         }
 
-        # Only compute correlation when pre-conditions are close
         if in_window or canary.get("dip_triggered"):
             snapshot["correlation_candidates"] = self.get_high_correlation_alts()
         else:
