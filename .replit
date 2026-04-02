@@ -31,3 +31,8 @@ outputType = "console"
 [deployment]
 deploymentTarget = "vm"
 run = ["python3", "main.py"]
+
+[userenv]
+
+[userenv.shared]
+CMC_API_KEY = "1cf262c5-ceb1-4f78-820a-8dc03aaf7331"

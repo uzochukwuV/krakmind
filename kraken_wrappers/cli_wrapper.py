@@ -10,10 +10,32 @@ Install SDK:  pip install python-kraken-sdk
 import subprocess
 import json
 import asyncio
+import shutil
+import os
 from typing import Optional
 from utils.logger import get_logger
 
 logger = get_logger("kraken_cli")
+
+KRAKEN_BIN_CANDIDATES = [
+    "/home/runner/.cargo/bin/kraken",
+    "/usr/local/bin/kraken",
+]
+
+
+def _find_kraken_binary() -> str:
+    """Return the path to the official krakenfx/kraken-cli binary."""
+    for path in KRAKEN_BIN_CANDIDATES:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    # fallback: search PATH but skip the python-kraken-sdk shim
+    found = shutil.which("kraken")
+    if found and ".pythonlibs" not in found:
+        return found
+    return "kraken"
+
+
+KRAKEN_BIN = _find_kraken_binary()
 
 
 class KrakenCLI:
@@ -27,23 +49,23 @@ class KrakenCLI:
         self._verify_cli()
 
     def _verify_cli(self):
-        """Check kraken binary is on PATH."""
+        """Check kraken binary is available."""
         try:
             result = subprocess.run(
-                ["kraken", "--version"],
+                [KRAKEN_BIN, "--version"],
                 capture_output=True, text=True, timeout=5
             )
-            logger.info(f"Kraken CLI found: {result.stdout.strip()}")
+            logger.info(f"Kraken CLI found: {result.stdout.strip()} ({KRAKEN_BIN})")
         except FileNotFoundError:
             logger.warning(
-                "kraken CLI binary not found on PATH.\n"
+                "kraken CLI binary not found.\n"
                 "Install from: https://github.com/krakenfx/kraken-cli/releases\n"
                 "Falling back to REST SDK for all calls."
             )
 
     def _run(self, args: list, timeout: int = 15) -> dict:
         """Execute a kraken CLI command and return parsed JSON."""
-        cmd = ["kraken"] + args + ["-o", "json"]
+        cmd = [KRAKEN_BIN] + args + ["-o", "json"]
         try:
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=timeout

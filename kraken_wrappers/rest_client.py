@@ -30,11 +30,12 @@ class KrakenRESTClient:
         """
         Get OHLC candles for a spot pair.
         Returns list of candles: [time, open, high, low, close, vwap, volume, count]
+        SDK v3+ returns the dict directly (no "result" wrapper).
         """
         try:
             data = self._spot_market.get_ohlc(pair=pair, interval=interval)
-            result = data.get("result", {})
-            for key, val in result.items():
+            # SDK v3+ returns {pair: [...candles...], 'last': timestamp}
+            for key, val in data.items():
                 if key != "last" and isinstance(val, list):
                     return val
         except Exception as e:
@@ -42,11 +43,10 @@ class KrakenRESTClient:
         return []
 
     def get_ticker(self, pair: str) -> Optional[dict]:
-        """Get spot ticker info."""
+        """Get spot ticker info. SDK v3+ returns {pair: {...}} directly."""
         try:
             data = self._spot_market.get_ticker(pair=pair)
-            result = data.get("result", {})
-            return result.get(pair)
+            return data.get(pair)
         except Exception as e:
             logger.error(f"Ticker fetch failed for {pair}: {e}")
             return None
