@@ -36,3 +36,4 @@ run = ["python3", "main.py"]
 
 [userenv.shared]
 CMC_API_KEY = "1cf262c5-ceb1-4f78-820a-8dc03aaf7331"
+OPENROUTER_API_KEY = "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"

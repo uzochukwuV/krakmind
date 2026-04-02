@@ -1,40 +1,55 @@
 """
-AI Brain — LangChain + Claude Sonnet
-This is the core decision-maker. Every trade goes through here.
-The AI has access to tools that let it check signals, CMC data,
-and reason about whether to enter, hold, or skip.
-
-Architecture: Claude gets the full market context and must call
-tools to gather what it needs, then output a structured TradeDecision.
+AI Brain — OpenRouter LLM (free tier models)
+Drop-in replacement for the Anthropic brain.
+Uses OpenAI-compatible API via OpenRouter, with manual tool-call loop
+since LangChain's tool binding may not work uniformly across all free models.
 """
 
 import json
+import re
+import os
 from typing import Optional
-from langchain_anthropic import ChatAnthropic
-from langchain.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
+from openai import OpenAI
 from utils.logger import get_logger
 from config import config
 
 logger = get_logger("ai_brain")
 
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "google/gemma-3n-e4b-it:free"
 
-# ── Tool definitions (LangChain @tool) ──────────────────────────────────────
-# These are injected into Claude so it can pull live data mid-reasoning.
+# Fallback models tried in order if the primary is rate-limited
+FALLBACK_MODELS = [
+    "google/gemma-3n-e4b-it:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "openai/gpt-oss-20b:free",
+    "qwen/qwen3.6-plus:free",
+]
+
+
+def _get_client() -> OpenAI:
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    return OpenAI(
+        base_url=OPENROUTER_BASE,
+        api_key=api_key,
+        default_headers={
+            "HTTP-Referer": "https://arbmind.replit.app",
+            "X-Title": "ArbMind Trading Agent",
+        },
+    )
+
+
+# ── Tool definitions ──────────────────────────────────────────────────────────
 
 def make_tools(signal_engine, cmc_client, position_manager):
     """
-    Factory: creates bound LangChain tools with access to live data sources.
-    Called once at agent init time.
+    Returns (tool_schemas, tool_executor_map).
+    tool_schemas  : list[dict] — OpenAI function-calling format
+    tool_executor : dict[name → callable]
     """
 
-    @tool
     def get_market_snapshot() -> str:
-        """
-        Get the full market snapshot: BTC/ETH canary signals, regime classification,
-        time window status, and top-20 CMC data with fear/greed proxy.
-        Call this first before any analysis.
-        """
+        """Full market snapshot: signals, regime, CMC top-20, fear/greed."""
         try:
             signals = signal_engine.get_full_signal_snapshot()
             cmc = cmc_client.get_market_snapshot()
@@ -52,50 +67,29 @@ def make_tools(signal_engine, cmc_client, position_manager):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @tool
     def get_correlation_candidates() -> str:
-        """
-        Get the list of altcoins with high correlation to BTC that are currently
-        dipping. These are the best candidates for mean-reversion long trades.
-        Returns correlation coefficient, 1h price change, and current price for each.
-        """
+        """Altcoins with high BTC correlation that are dipping — best trade candidates."""
         try:
-            candidates = signal_engine.get_high_correlation_alts()
-            return json.dumps(candidates, indent=2)
+            return json.dumps(signal_engine.get_high_correlation_alts(), indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @tool
     def get_open_positions() -> str:
-        """
-        Get all currently open paper trading positions, including entry price,
-        current P&L, and time held.
-        """
+        """All open paper positions with entry price, P&L, time held."""
         try:
-            positions = position_manager.get_open_positions()
-            return json.dumps(positions, indent=2)
+            return json.dumps(position_manager.get_open_positions(), indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @tool
     def get_account_summary() -> str:
-        """
-        Get paper account balance, total P&L, number of trades today,
-        win rate, and current exposure percentage.
-        """
+        """Paper account balance, total P&L, win rate, exposure."""
         try:
-            summary = position_manager.get_account_summary()
-            return json.dumps(summary, indent=2)
+            return json.dumps(position_manager.get_account_summary(), indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @tool
     def get_cmc_coin_detail(symbol: str) -> str:
-        """
-        Get detailed CMC data for a specific coin by symbol (e.g. 'SOL', 'BNB', 'XRP').
-        Returns price, 1h/24h/7d changes, volume, and market cap.
-        Use this to validate a specific alt before trading it.
-        """
+        """Detailed CMC data for a specific coin symbol (e.g. 'SOL')."""
         try:
             coins = cmc_client.get_top20_listings()
             coin = next((c for c in coins if c["symbol"].upper() == symbol.upper()), None)
@@ -105,29 +99,83 @@ def make_tools(signal_engine, cmc_client, position_manager):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @tool
     def get_regime_analysis() -> str:
-        """
-        Get detailed regime classification: BULL/BEAR/SIDEWAYS with BTC SMA20/200,
-        slope, and whether trading is enabled.
-        """
+        """Regime classification: BULL/BEAR/SIDEWAYS with BTC SMA20/200 data."""
         try:
-            regime = signal_engine.classify_regime()
-            return json.dumps(regime, indent=2)
+            return json.dumps(signal_engine.classify_regime(), indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    return [
-        get_market_snapshot,
-        get_correlation_candidates,
-        get_open_positions,
-        get_account_summary,
-        get_cmc_coin_detail,
-        get_regime_analysis,
+    schemas = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_market_snapshot",
+                "description": "Get full market snapshot: BTC/ETH canary signals, regime, time window, CMC top-20, fear/greed. Call this FIRST.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_correlation_candidates",
+                "description": "Get altcoins with high correlation to BTC that are currently dipping. Best mean-reversion candidates.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_open_positions",
+                "description": "Get all open paper trading positions with P&L.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_account_summary",
+                "description": "Get paper account balance, P&L, win rate, exposure.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_cmc_coin_detail",
+                "description": "Detailed CMC data for a specific coin by symbol, e.g. 'SOL', 'BNB', 'XRP'.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "Coin symbol, e.g. 'SOL'"}
+                    },
+                    "required": ["symbol"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_regime_analysis",
+                "description": "Detailed regime classification with BTC SMA data.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
     ]
 
+    executor = {
+        "get_market_snapshot": get_market_snapshot,
+        "get_correlation_candidates": get_correlation_candidates,
+        "get_open_positions": get_open_positions,
+        "get_account_summary": get_account_summary,
+        "get_cmc_coin_detail": get_cmc_coin_detail,
+        "get_regime_analysis": get_regime_analysis,
+    }
 
-# ── System prompt ────────────────────────────────────────────────────────────
+    return schemas, executor
+
+
+# ── System prompt ─────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are ArbMind, an autonomous crypto trading agent specialising in
 mean-reversion day trades on Kraken Futures (paper mode).
@@ -181,80 +229,124 @@ Rules:
 """
 
 
-# ── AI Brain class ───────────────────────────────────────────────────────────
+# ── AI Brain class ────────────────────────────────────────────────────────────
 
 class AIBrain:
     def __init__(self, signal_engine, cmc_client, position_manager):
-        self.llm = ChatAnthropic(
-            model="claude-sonnet-4-6",
-            api_key=config.anthropic_api_key,
-            max_tokens=2048,
-            temperature=0.1,  # Low temp for consistent decisions
+        self.client = _get_client()
+        self.model = os.getenv("OPENROUTER_MODEL", DEFAULT_MODEL)
+        self.tool_schemas, self.tool_executor = make_tools(
+            signal_engine, cmc_client, position_manager
         )
-        self.tools = make_tools(signal_engine, cmc_client, position_manager)
-        self.llm_with_tools = self.llm.bind_tools(self.tools)
-        self._tool_map = {t.name: t for t in self.tools}
+        logger.info(f"AI Brain initialised: {self.model} via OpenRouter")
 
-    def _execute_tool(self, tool_call: dict) -> str:
-        """Execute a single tool call and return string result."""
-        name = tool_call.get("name")
-        args = tool_call.get("args", {})
-        tool_fn = self._tool_map.get(name)
-        if not tool_fn:
+    def _call_tool(self, name: str, args: dict) -> str:
+        fn = self.tool_executor.get(name)
+        if not fn:
             return json.dumps({"error": f"Unknown tool: {name}"})
         try:
-            result = tool_fn.invoke(args)
-            return result if isinstance(result, str) else json.dumps(result)
+            return fn(**args) if args else fn()
         except Exception as e:
             return json.dumps({"error": str(e)})
 
     def _run_agentic_loop(self, user_message: str, max_rounds: int = 6) -> str:
         """
-        Run LangChain agentic tool-use loop.
-        Claude can call tools multiple times before giving its final answer.
+        OpenAI-compatible tool-use loop.
+        Model calls tools as needed, we execute them, then get the final answer.
         """
-        from langchain_core.messages import AIMessage, ToolMessage
-
         messages = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=user_message),
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
         ]
 
         for round_num in range(max_rounds):
-            response = self.llm_with_tools.invoke(messages)
-            messages.append(response)
+            response = None
+            last_err = None
+            models_to_try = [self.model] + [m for m in FALLBACK_MODELS if m != self.model]
+            for m in models_to_try:
+                try:
+                    response = self.client.chat.completions.create(
+                        model=m,
+                        messages=messages,
+                        tools=self.tool_schemas,
+                        tool_choice="auto",
+                        max_tokens=2048,
+                        temperature=0.1,
+                    )
+                    if m != self.model:
+                        logger.info(f"Switched to fallback model: {m}")
+                    break
+                except Exception as e:
+                    last_err = e
+                    logger.warning(f"Model {m} failed: {str(e)[:80]} — trying next")
+            if response is None:
+                logger.error(f"All models failed: {last_err}")
+                return json.dumps({
+                    "decision": "SKIP",
+                    "confidence": 0.0,
+                    "reasoning": f"All OpenRouter models failed: {last_err}",
+                    "trades": [],
+                    "market_context": "api error",
+                    "next_check_minutes": 15,
+                })
 
-            tool_calls = getattr(response, "tool_calls", [])
+            choice = response.choices[0]
+            msg = choice.message
+
+            messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    }
+                    for tc in (msg.tool_calls or [])
+                ] or None,
+            })
+
+            tool_calls = msg.tool_calls or []
             if not tool_calls:
-                # No more tool calls — final answer
-                return response.content
+                return msg.content or ""
 
-            # Execute all tool calls in this round
             for tc in tool_calls:
-                result = self._execute_tool(tc)
-                messages.append(
-                    ToolMessage(content=result, tool_call_id=tc["id"])
-                )
-            logger.debug(f"AI tool round {round_num + 1}: called {[tc['name'] for tc in tool_calls]}")
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                result = self._call_tool(tc.function.name, args)
+                logger.debug(f"Tool {tc.function.name} → {result[:120]}")
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": result,
+                })
 
-        # Fallback: ask for final decision without more tools
-        messages.append(HumanMessage(
-            content="You have enough data. Give your final decision JSON now."
-        ))
-        final = self.llm.invoke(messages)
-        return final.content
+            logger.debug(f"AI tool round {round_num + 1}: {[tc.function.name for tc in tool_calls]}")
+
+        # Fallback: ask for final answer without tools
+        messages.append({"role": "user", "content": "You have enough data. Give your final decision JSON now."})
+        try:
+            final = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=1024,
+                temperature=0.1,
+            )
+            return final.choices[0].message.content or ""
+        except Exception as e:
+            logger.error(f"Final answer API error: {e}")
+            return '{"decision": "SKIP", "confidence": 0.0, "reasoning": "fallback", "trades": [], "market_context": "", "next_check_minutes": 15}'
 
     def analyze_and_decide(self) -> "TradeDecision":
-        """
-        Main entry point. Returns a TradeDecision with full AI reasoning.
-        The AI will call tools as needed, then output structured JSON.
-        """
+        """Main entry: returns a TradeDecision with full AI reasoning."""
         prompt = (
             "Analyze current market conditions and decide whether to enter any trades. "
             "Start by calling get_market_snapshot, then follow the decision process in your instructions."
         )
 
-        logger.info("AI analysis started...")
+        logger.info(f"AI analysis started ({self.model})...")
         raw = self._run_agentic_loop(prompt)
         logger.info(f"AI raw output length: {len(raw)} chars")
 
@@ -267,27 +359,21 @@ class AIBrain:
         return decision
 
     def analyze_position_for_close(self, position: dict) -> "PositionDecision":
-        """
-        Ask the AI whether to close a specific open position.
-        Called by the position monitor loop.
-        """
+        """Ask AI whether to close a specific open position."""
         prompt = (
             f"Review this open position and decide whether to close it, "
             f"hold it, or update the stop loss.\n\n"
             f"Position:\n{json.dumps(position, indent=2)}\n\n"
             f"First call get_market_snapshot to check current conditions. "
             f"Then decide: CLOSE, HOLD, or UPDATE_STOP.\n\n"
-            f"Output JSON:\n"
-            f'{{"action": "CLOSE"|"HOLD"|"UPDATE_STOP", '
-            f'"reason": "...", '
-            f'"new_stop_pct": 0.02}}'
+            f'Output JSON: {{"action": "CLOSE"|"HOLD"|"UPDATE_STOP", '
+            f'"reason": "...", "new_stop_pct": 0.02}}'
         )
-
         raw = self._run_agentic_loop(prompt, max_rounds=4)
         return PositionDecision.parse(raw)
 
 
-# ── Result dataclasses ───────────────────────────────────────────────────────
+# ── Result dataclasses ────────────────────────────────────────────────────────
 
 class TradeDecision:
     def __init__(self, decision, confidence, reasoning, trades,
@@ -295,21 +381,16 @@ class TradeDecision:
         self.decision = decision
         self.confidence = confidence
         self.reasoning = reasoning
-        self.trades = trades  # list of dicts
+        self.trades = trades
         self.market_context = market_context
         self.next_check_minutes = next_check_minutes
         self.raw = raw
 
     @classmethod
     def parse(cls, raw: str) -> "TradeDecision":
-        """Extract JSON from AI response (handles markdown code blocks)."""
-        import re
-        # Find JSON block in response
         match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
         if not match:
-            # Try bare JSON
-            match = re.search(r"(\{[^{}]*\"decision\"[^{}]*\})", raw, re.DOTALL)
-
+            match = re.search(r"(\{[^{}]*\"decision\".*?\})", raw, re.DOTALL)
         if match:
             try:
                 data = json.loads(match.group(1))
@@ -323,9 +404,7 @@ class TradeDecision:
                     raw=raw,
                 )
             except (json.JSONDecodeError, ValueError) as e:
-                logger.error(f"Failed to parse AI decision JSON: {e}")
-
-        # Fallback safe decision
+                logger.error(f"Failed to parse AI decision JSON: {e}\nRaw: {raw[:300]}")
         return cls(
             decision="SKIP",
             confidence=0.0,
@@ -346,7 +425,6 @@ class PositionDecision:
 
     @classmethod
     def parse(cls, raw: str) -> "PositionDecision":
-        import re
         match = re.search(r"\{.*?\}", raw, re.DOTALL)
         if match:
             try:

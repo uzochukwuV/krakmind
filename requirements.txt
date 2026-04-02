@@ -1,9 +1,6 @@
 # ArbMind dependencies
 python-kraken-sdk>=3.2.0       # Kraken REST + WebSocket SDK
-langchain>=0.3.0               # LangChain core
-langchain-anthropic>=0.3.0     # Claude AI brain
-langchain-core>=0.3.0
-anthropic>=0.40.0
+openai>=1.0.0                  # OpenRouter (OpenAI-compatible API)
 requests>=2.31.0               # CoinMarketCap API calls
 pandas>=2.0.0                  # Correlation matrix, OHLC analysis
 numpy>=1.24.0                  # Numerical ops

@@ -12,7 +12,8 @@ load_dotenv()
 @dataclass
 class Config:
     # Keys
-    anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
+    openrouter_api_key: str = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""))
+    openrouter_model: str = field(default_factory=lambda: os.getenv("OPENROUTER_MODEL", "qwen/qwen3.6-plus:free"))
     kraken_api_key: str = field(default_factory=lambda: os.getenv("KRAKEN_API_KEY", ""))
     kraken_api_secret: str = field(default_factory=lambda: os.getenv("KRAKEN_API_SECRET", ""))
     kraken_futures_key: str = field(default_factory=lambda: os.getenv("KRAKEN_FUTURES_API_KEY", ""))
