@@ -20,6 +20,7 @@ from data.cmc_client import CMCClient
 from agent.signals import SignalEngine
 from agent.ai_brain import AIBrain
 from agent.position_manager import PositionManager
+from agent.prism_loop import PrismSignalEngine, prism_store
 from utils.logger import get_logger
 
 logger = get_logger("loop")
@@ -35,6 +36,7 @@ class TradingLoop:
         self.signals = SignalEngine()
         self.positions = PositionManager(self.cli)
         self.brain = AIBrain(self.signals, self.cmc, self.positions)
+        self.prism = PrismSignalEngine(position_manager=self.positions)
 
         self._cycle = 0
         self._last_decision_time = 0
@@ -44,15 +46,17 @@ class TradingLoop:
         logger.info(f"Capital: ${config.paper_capital:.2f}")
         logger.info(f"Loop interval: {config.loop_interval}s")
         logger.info(f"Tradeable alts: {', '.join(config.tradeable_alts)}")
+        logger.info("Prism Signal Engine: enabled (polling every 5m)")
 
     # ── Main entry ──────────────────────────────────────────────
 
     async def run(self):
-        """Start both async loops concurrently."""
-        logger.info("Starting trading loops...")
+        """Start all three async loops concurrently."""
+        logger.info("Starting trading loops (main + position monitor + Prism signals)...")
         await asyncio.gather(
             self._main_loop(),
             self._position_monitor(),
+            self.prism.run(),
         )
 
     # ── Loop 1: AI decision loop ─────────────────────────────────
@@ -78,7 +82,6 @@ class TradingLoop:
 
     async def _main_cycle(self):
         """One iteration of the main loop."""
-        # Quick pre-check: time window + basic canary (saves AI API calls)
         in_window, window_label = self.signals.is_dip_window()
         summary = self.positions.get_account_summary()
 
@@ -95,23 +98,37 @@ class TradingLoop:
             logger.info(f"Max positions open ({summary['open_positions']}/3) — skipping analysis")
             return
 
-        # Quick canary pre-check (avoids burning AI tokens on cold market)
+        # Quick canary pre-check
         canary = self.signals.get_canary_signal()
-        if not canary["dip_triggered"] and not in_window:
+        dip_triggered = canary["dip_triggered"]
+
+        # Prism strong signal overrides time-window gate
+        prism_signals = prism_store.get_signals() if prism_store.is_fresh else []
+        strong_prism = [s for s in prism_signals if s["signal_score"] >= 3]
+        prism_trigger = bool(strong_prism)
+
+        if not dip_triggered and not in_window and not prism_trigger:
             next_window = self.signals.minutes_to_next_window()
             btc_chg = canary['btc']['change_1h_pct']
             eth_chg = canary['eth']['change_1h_pct']
             btc_str = f"{btc_chg:.2f}%" if btc_chg is not None else "N/A"
             eth_str = f"{eth_chg:.2f}%" if eth_chg is not None else "N/A"
+            prism_str = f"Prism={len(prism_signals)} signals" if prism_signals else "Prism=no signals"
             logger.info(
-                f"Canary: BTC={btc_str} | "
-                f"ETH={eth_str} | "
-                f"Next window in {next_window}m"
+                f"Canary: BTC={btc_str} | ETH={eth_str} | "
+                f"Next window in {next_window}m | {prism_str}"
             )
             return
 
+        # Log what triggered analysis
+        triggers = []
+        if in_window:       triggers.append(f"time_window({window_label})")
+        if dip_triggered:   triggers.append("canary_dip")
+        if prism_trigger:   triggers.append(f"prism_strong({len(strong_prism)} signals)")
+        logger.info(f"Analysis triggered by: {', '.join(triggers)}")
+
         # ── Full AI analysis ──────────────────────────────────────
-        logger.info("Conditions interesting — invoking AI analysis...")
+        logger.info("Invoking AI analysis...")
         self._last_decision_time = time.time()
 
         decision = await asyncio.get_event_loop().run_in_executor(

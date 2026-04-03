@@ -13,6 +13,7 @@ from typing import Optional
 from openai import OpenAI
 from utils.logger import get_logger
 from config import config
+from agent.prism_loop import prism_store
 
 logger = get_logger("ai_brain")
 
@@ -45,27 +46,34 @@ def _get_client() -> OpenAI:
 SYSTEM_PROMPT = """You are ArbMind, an autonomous crypto trading agent specialising in
 mean-reversion day trades on Kraken Futures (paper mode).
 
-Your edge:
-- BTC and ETH are canary assets. When they dip -1.5% / -1.2% in 1h, correlated
-  top-20 alts tend to follow, then recover within the same session.
-- Two high-probability windows per day (UTC+1): 06:00-06:30 and 15:00-16:30.
-- In BEAR regimes, skip all longs. In BULL/SIDEWAYS, look for the dip entry.
+You now have THREE signal sources — use all of them together:
+1. Canary dip signals (BTC/ETH 1h change + RSI + volume)
+2. Time window gate (06:00–06:30 WAT and 15:00–16:30 WAT)
+3. Prism Intelligence (real Fear & Greed, social sentiment, funding rates, trending)
 
-Decision rules (follow strictly):
-1. If regime = BEAR → output SKIP.
-2. If not in time window AND no dip triggered → output SKIP.
-3. If BTC and ETH are NOT both dipping below thresholds → output SKIP.
-4. If 3 positions already open → output HOLD.
-5. Only trade alts with correlation >= 0.6 to BTC.
-6. Never exceed 5% capital per trade. Max 3 concurrent positions.
-7. Confidence < 0.6 → SKIP.
-8. Always set stop_loss_pct >= 0.02.
-9. SIGNAL QUALITY FILTERS (prefer alts with all three):
-   a. RSI < 35 on the alt (oversold = mean-reversion likely). Prefer this strongly.
-   b. Volume spike on BTC (volume_ratio > 1.5) confirms the move is real.
-   c. Alt dipping > 0.3% in 1h alongside BTC/ETH.
-   If daily_loss_limit_hit = true → output SKIP immediately (capital protection day).
-10. signal_quality score 2–3 = strong setup. Score 0–1 = weak, require confidence >= 0.75.
+Your core edge:
+- In FEAR zones (F&G < 40), dipping alts are prime mean-reversion candidates.
+- Prism signals with score ≥ 3 are strong enough to trigger entries outside time windows.
+- BTC/ETH funding rates signal leverage sentiment — neutral/negative = safer for longs.
+- Social sentiment "bullish" + oversold RSI = high-conviction setup.
+
+Decision rules:
+1. If regime = BEAR AND no Prism strong signal → SKIP.
+2. If daily_loss_limit_hit = true → SKIP (capital protection, non-negotiable).
+3. If 3 positions already open → HOLD.
+4. ENTER conditions (need ≥ 2 of these):
+   a. In time window (06:00-06:30 or 15:00-16:30 WAT)
+   b. BTC/ETH canary dip triggered (both below threshold)
+   c. Prism signal score ≥ 3 for the target alt
+   d. Fear & Greed ≤ 40 (fear = mean-reversion opportunity)
+   e. Alt RSI < 35 (oversold on technical)
+5. Always set stop_loss_pct >= 0.02. Take profit >= 0.03.
+6. Confidence < 0.6 → SKIP. Low quality signals (score=0) need confidence ≥ 0.75.
+7. Only trade symbols from: PF_SOLUSD, PF_XRPUSD, PF_ADAUSD, PF_AVAXUSD,
+   PF_DOTUSD, PF_LINKUSD, PF_LTCUSD, PF_UNIUSD, PF_MATICUSD, PF_BNBUSD.
+
+IMPORTANT: You have Prism real-time intelligence. Use it. A Prism STRONG_BUY signal
+with F&G < 40 and RSI < 35 is a high-conviction setup even without a canary dip.
 
 You will receive a full market snapshot. Analyse it and output EXACTLY this JSON (no other text after it):
 
@@ -202,7 +210,72 @@ class ContextBuilder:
         except Exception as e:
             sections.append(f"## CMC Data\nError: {e}")
 
-        # 5. Open positions & account
+        # 5. Prism signal intelligence
+        try:
+            if prism_store.is_fresh:
+                snap = prism_store.get_snapshot()
+                signals = prism_store.get_signals()
+                fg = snap.get("fear_greed", {})
+                g  = snap.get("global", {})
+
+                sections.append(f"""## Prism Market Intelligence (age={prism_store.age_seconds/60:.0f}m)
+- Fear & Greed (REAL index): {fg.get('value', 'N/A')} — {fg.get('label', '')}
+- BTC dominance: {g.get('btc_dominance', 0):.1f}%
+- Total market cap: ${(g.get('total_market_cap_usd') or 0)/1e9:.0f}B
+- Market cap Δ24h: {g.get('market_cap_change_24h_pct', 0):+.2f}%
+- 24h volume: ${(g.get('total_volume_24h_usd') or 0)/1e9:.0f}B""")
+
+                if signals:
+                    sig_rows = "\n".join(
+                        f"  {s['kraken_symbol']}: score={s['signal_score']} "
+                        f"[{s['classification']}] | 24h={s['change_24h_pct']:+.1f}% | "
+                        f"sentiment={s.get('sentiment_label','')} | tags={', '.join(s['tags'][:3])}"
+                        for s in signals[:6]
+                    )
+                    sections.append(f"## Prism Trade Signals (ranked by score)\n{sig_rows}")
+                else:
+                    sections.append("## Prism Trade Signals\n  None meeting threshold right now")
+
+                # Trending
+                trending = snap.get("trending", [])
+                if trending:
+                    t_row = ", ".join(
+                        f"{t['symbol']}({t.get('change_24h', 0):+.1f}%)" for t in trending[:6]
+                    )
+                    sections.append(f"## Prism Trending Tokens\n  {t_row}")
+
+                # Top losers (mean-reversion candidates)
+                losers = snap.get("losers", [])
+                if losers:
+                    l_row = ", ".join(
+                        f"{c['symbol']}({c.get('change_24h', 0):+.1f}%)" for c in losers[:5]
+                    )
+                    sections.append(f"## Prism Top Losers 24h (mean-reversion watch)\n  {l_row}")
+
+                # Per-alt Prism signals mapped to Kraken symbols
+                alt_sigs = snap.get("alt_signals", {})
+                if alt_sigs:
+                    a_rows = "\n".join(
+                        f"  {k}: price=${v.get('price_usd') or 0:.3f} | "
+                        f"24h={v.get('change_24h_pct') or 0:+.1f}% | "
+                        f"sentiment={v.get('sentiment_label', 'N/A')} ({v.get('sentiment_score') or 0:.0f})"
+                        for k, v in alt_sigs.items()
+                        if k.startswith("PF_")
+                    )
+                    sections.append(f"## Prism Per-Alt Signals\n{a_rows}")
+
+                # BTC/ETH funding rates (leverage sentiment)
+                funding = snap.get("funding", {})
+                for sym in ["BTC", "ETH"]:
+                    fd = funding.get(sym, {})
+                    if fd.get("interpretation"):
+                        sections.append(f"## Prism {sym} Funding Rate\n  {fd['interpretation']}")
+            else:
+                sections.append(f"## Prism Market Intelligence\n  Stale or unavailable (age={prism_store.age_seconds/60:.0f}m)")
+        except Exception as e:
+            sections.append(f"## Prism\nError: {e}")
+
+        # 6. Open positions & account
         try:
             summary = self.positions.get_account_summary()
             daily_loss_hit = summary.get('daily_loss_limit_hit', False)
