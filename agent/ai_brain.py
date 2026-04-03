@@ -20,11 +20,11 @@ OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 # Models tried in priority order — all free, no tool-use required
 FREE_MODELS = [
-    "qwen/qwen3.6-plus:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
     "meta-llama/llama-3.3-70b-instruct:free",
-    "openai/gpt-oss-20b:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "deepseek/deepseek-r1-distill-llama-70b:free",
+    "qwen/qwen-2.5-72b-instruct:free",
 ]
 
 
@@ -239,6 +239,11 @@ class AIBrain:
 
     def _chat(self, messages: list, max_tokens: int = 1024) -> Optional[str]:
         """Call OpenRouter, trying each free model until one succeeds."""
+        api_key = os.getenv("OPENROUTER_API_KEY", "")
+        if not api_key:
+            logger.error("OPENROUTER_API_KEY not set — AI brain disabled")
+            return None
+
         models_to_try = [self.model] + [m for m in FREE_MODELS if m != self.model]
         for model in models_to_try:
             try:
@@ -254,7 +259,15 @@ class AIBrain:
                     return resp.choices[0].message.content
                 logger.warning(f"Model {model} returned empty response — trying next")
             except Exception as e:
-                logger.warning(f"Model {model} failed: {str(e)[:100]} — trying next")
+                err_str = str(e)
+                # 401 means bad key — no point trying other models
+                if "401" in err_str or "User not found" in err_str or "AuthenticationError" in err_str:
+                    logger.error(
+                        "OpenRouter API key invalid or expired (401). "
+                        "Update OPENROUTER_API_KEY at openrouter.ai/keys — AI decisions skipped."
+                    )
+                    return None
+                logger.warning(f"Model {model} failed: {err_str[:100]} — trying next")
                 time.sleep(1)
         logger.error("All OpenRouter models failed")
         return None
