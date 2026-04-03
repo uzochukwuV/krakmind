@@ -37,3 +37,7 @@ run = ["python3", "main.py"]
 [userenv.shared]
 CMC_API_KEY = "1cf262c5-ceb1-4f78-820a-8dc03aaf7331"
 PRISM_API_KEY = "prism_sk_US8dsdhgHcoWzO7APOz_Vjxd4DyCoTTdEeUd4sw5_Wo"
+
+[[ports]]
+localPort = 8000
+externalPort = 80

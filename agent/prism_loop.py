@@ -68,6 +68,10 @@ class PrismSignalStore:
     def get_signals(self) -> list[dict]:
         return self._signals
 
+    @property
+    def last_updated(self) -> float:
+        return self._last_update
+
     def get_summary_text(self) -> str:
         """Short text summary for AI context injection."""
         if not self._snapshot:

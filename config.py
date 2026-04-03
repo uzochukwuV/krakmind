@@ -49,27 +49,40 @@ class Config:
         "PF_ETHUSD": "XETHZUSD",
     })
 
-    # Top-20 tradeable alts on Kraken Futures (excludes BTC/ETH)
+    # Tradeable alts on Kraken Futures (excludes BTC/ETH canaries)
     tradeable_alts: list = field(default_factory=lambda: [
-        "PF_SOLUSD",   # Solana
-        "PF_BNBUSD",   # BNB
-        "PF_XRPUSD",   # XRP
-        "PF_ADAUSD",   # Cardano
-        "PF_AVAXUSD",  # Avalanche
-        "PF_DOTUSD",   # Polkadot
-        "PF_MATICUSD", # Polygon
-        "PF_LINKUSD",  # Chainlink
-        "PF_LTCUSD",   # Litecoin
-        "PF_UNIUSD",   # Uniswap
+        # Existing core alts
+        "PF_SOLUSD",    # Solana
+        "PF_BNBUSD",    # BNB
+        "PF_XRPUSD",    # XRP
+        "PF_ADAUSD",    # Cardano
+        "PF_AVAXUSD",   # Avalanche
+        "PF_DOTUSD",    # Polkadot
+        "PF_MATICUSD",  # Polygon
+        "PF_LINKUSD",   # Chainlink
+        "PF_LTCUSD",    # Litecoin
+        "PF_UNIUSD",    # Uniswap
+        # User-requested expansions (all confirmed on Kraken Futures)
+        "PF_DOGEUSD",   # Dogecoin
+        "PF_XLMUSD",    # Stellar
+        "PF_TONUSD",    # Toncoin
+        "PF_FLOWUSD",   # Flow
+        "PF_ASTERUSD",  # Aster Network
+        "PF_KAVAUSD",   # Kava
+        "PF_ARCUSD",    # Arc
+        "PF_GMXUSD",    # GMX
+        # Bonus high-liquidity alts
+        "PF_ATOMUSD",   # Cosmos
+        "PF_NEARUSD",   # NEAR Protocol
     ])
 
-    # CMC slugs for top-20 market data
+    # CMC slugs for market data (aligned with tradeable_alts + canaries)
     cmc_slugs: list = field(default_factory=lambda: [
         "bitcoin", "ethereum", "solana", "bnb", "xrp",
-        "cardano", "avalanche", "polkadot", "polygon",
+        "cardano", "avalanche-2", "polkadot", "matic-network",
         "chainlink", "litecoin", "uniswap", "cosmos",
-        "near-protocol", "stellar", "internet-computer",
-        "aptos", "filecoin", "vechain", "the-graph"
+        "near", "stellar", "dogecoin", "toncoin",
+        "flow", "kava", "gmx",
     ])
 
     # DIP windows in UTC+1 (hour_start, min_start, hour_end, min_end)

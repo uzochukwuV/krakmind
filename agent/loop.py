@@ -21,6 +21,7 @@ from agent.signals import SignalEngine
 from agent.ai_brain import AIBrain
 from agent.position_manager import PositionManager
 from agent.prism_loop import PrismSignalEngine, prism_store
+from api import shared_state
 from utils.logger import get_logger
 
 logger = get_logger("loop")
@@ -47,6 +48,15 @@ class TradingLoop:
         logger.info(f"Loop interval: {config.loop_interval}s")
         logger.info(f"Tradeable alts: {', '.join(config.tradeable_alts)}")
         logger.info("Prism Signal Engine: enabled (polling every 5m)")
+
+        # Seed shared state with static config
+        shared_state.update("agent", {
+            "mode": "PAPER" if config.paper_mode else "LIVE",
+            "status": "initialising",
+            "tradeable_alts": config.tradeable_alts,
+            "loop_interval": config.loop_interval,
+        })
+        shared_state.update("capital", {"total": config.paper_capital})
 
     # ── Main entry ──────────────────────────────────────────────
 
@@ -80,6 +90,67 @@ class TradingLoop:
             logger.debug(f"Cycle {self._cycle} took {elapsed:.1f}s. Sleeping {sleep_time:.0f}s.")
             await asyncio.sleep(sleep_time)
 
+    def _push_state(self, summary: dict, in_window: bool, window_label: str, canary: dict = None):
+        """Push live trading state to the shared API state store."""
+        import time as _time
+        shared_state.update("agent", {
+            "status": "running",
+            "cycle": self._cycle,
+            "last_update": _time.time(),
+        })
+        shared_state.update("capital", {
+            "total":         summary["capital"],
+            "deployed":      summary["capital"] - summary.get("available_capital", summary["capital"]),
+            "available":     summary.get("available_capital", summary["capital"]),
+            "today_pnl":     summary["today_pnl"],
+            "today_pnl_pct": summary["today_pnl"] / config.paper_capital * 100,
+            "all_time_pnl":  summary.get("total_pnl", 0.0),
+        })
+        shared_state.update("stats", {
+            "total_trades": summary["wins"] + summary["losses"],
+            "wins":         summary["wins"],
+            "losses":       summary["losses"],
+            "win_rate":     summary["win_rate_pct"],
+        })
+        # Positions
+        open_pos = self.positions.get_open_positions()
+        shared_state._state["positions"] = open_pos
+        # Trade history (read directly from the persisted state)
+        shared_state._state["trade_history"] = list(self.positions._state.get("closed_trades", []))
+
+        # Signal state
+        sig_update = {
+            "in_window":              in_window,
+            "window_label":           window_label,
+            "minutes_to_next_window": self.signals.minutes_to_next_window(),
+        }
+        if canary:
+            sig_update["canary"] = canary
+            try:
+                regime = self.signals.classify_regime()
+                sig_update["regime"] = regime if isinstance(regime, dict) else {"regime": str(regime)}
+            except Exception:
+                pass
+        shared_state.update("signals", sig_update)
+
+        # Prism state
+        if prism_store.is_fresh:
+            snap = prism_store.get_snapshot() or {}
+            fg  = snap.get("fear_greed", {})
+            glb = snap.get("global", {})
+            shared_state.update("prism", {
+                "fear_greed":        fg.get("value"),
+                "fear_greed_label":  fg.get("label"),
+                "btc_dominance":     glb.get("btc_dominance"),
+                "market_change_24h": glb.get("market_cap_change_24h_pct"),
+                "gainers":           snap.get("gainers", []),
+                "losers":            snap.get("losers", []),
+                "trending":          snap.get("trending", []),
+                "signals":           prism_store.get_signals(),
+                "last_updated":      prism_store.last_updated,
+                "is_fresh":          True,
+            })
+
     async def _main_cycle(self):
         """One iteration of the main loop."""
         in_window, window_label = self.signals.is_dip_window()
@@ -101,6 +172,9 @@ class TradingLoop:
         # Quick canary pre-check
         canary = self.signals.get_canary_signal()
         dip_triggered = canary["dip_triggered"]
+
+        # Update shared API state every cycle
+        self._push_state(summary, in_window, window_label, canary)
 
         # Prism strong signal overrides time-window gate
         prism_signals = prism_store.get_signals() if prism_store.is_fresh else []
@@ -136,6 +210,16 @@ class TradingLoop:
         )
 
         self._print_decision(decision)
+
+        # Persist AI decision to shared state for dashboard
+        shared_state._state["last_ai_decision"] = {
+            "decision":       decision.decision,
+            "confidence":     decision.confidence,
+            "market_context": decision.market_context,
+            "reasoning":      decision.reasoning,
+            "trades":         decision.trades,
+            "decided_at":     time.time(),
+        }
 
         if decision.decision == "ENTER" and decision.confidence >= 0.6:
             await self._execute_trades(decision)

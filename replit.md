@@ -1,29 +1,35 @@
 # ArbMind — AI Trading Agent
 
-An AI-first autonomous paper trading agent for Kraken Futures. Uses OpenRouter free LLMs, live CoinMarketCap data, and the official Kraken CLI binary. Trades top-20 cryptocurrencies via a mean-reversion strategy triggered by BTC/ETH canary dips.
+An AI-first autonomous paper trading agent for Kraken Futures. Uses OpenRouter free LLMs, live CoinMarketCap data, and the official Kraken CLI binary. Trades 20 altcoins via a mean-reversion strategy triggered by BTC/ETH canary dips and Prism market intelligence.
 
 ## Architecture
 
 - **Language**: Python 3.12
 - **AI Engine**: OpenRouter (free models — meta-llama/llama-3.3-70b-instruct:free + fallbacks)
 - **Exchange**: Kraken Futures paper mode via `kraken-cli` v0.3.0 binary
-- **Market data**: CoinMarketCap Pro API + Kraken REST SDK (OHLC, RSI, volume)
+- **Market data**: CoinMarketCap Pro API + Kraken REST SDK (OHLC, RSI, volume) + PrismAPI
+- **Dashboard API**: FastAPI server on port 8000 (for dashboard frontend)
 
 ## Package Structure
 
 ```
-main.py              # Entry point
+main.py              # Entry point (starts API server + trading loops)
 config.py            # Central config via env vars
 agent/
-  loop.py            # Dual async loops (AI decision + position monitor)
+  loop.py            # Triple async loops (AI decision + position monitor + Prism)
   ai_brain.py        # OpenRouter LLM integration + context builder
   signals.py         # Signal engine: canary dips, RSI, volume, regime, correlation
   position_manager.py # Paper position tracking, P&L, Kelly sizing, trailing stops
+  prism_loop.py      # Independent Prism signal engine (polls every 5m)
+api/
+  server.py          # FastAPI dashboard API server (port 8000)
+  shared_state.py    # Thread-safe in-memory state shared between loop and API
 kraken_wrappers/
   cli_wrapper.py     # Wrapper for `kraken` CLI binary (/home/runner/.cargo/bin/kraken)
   rest_client.py     # python-kraken-sdk REST for OHLC data
 data/
-  cmc_client.py      # CoinMarketCap API client (top20, global metrics, F&G proxy)
+  cmc_client.py      # CoinMarketCap API client (top20, global metrics)
+  prism_client.py    # PrismAPI client (F&G, sentiment, funding rates, trending)
   journal.py         # Trade logging and performance summary
   paper_positions.json  # Live paper position state (persisted across restarts)
 utils/

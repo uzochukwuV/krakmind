@@ -456,18 +456,31 @@ class PositionManager:
     # ── Helpers ──────────────────────────────────────────────────
 
     FUTURES_TO_SPOT = {
+        # Canaries
+        "PF_XBTUSD":   "XXBTZUSD",
+        "PF_ETHUSD":   "XETHZUSD",
+        # Original alts
         "PF_SOLUSD":   "SOLUSD",
+        "PF_BNBUSD":   "BNBUSD",
         "PF_XRPUSD":   "XXRPZUSD",
         "PF_ADAUSD":   "ADAUSD",
         "PF_AVAXUSD":  "AVAXUSD",
         "PF_DOTUSD":   "DOTUSD",
-        "PF_LTCUSD":   "XLTCZUSD",
-        "PF_LINKUSD":  "LINKUSD",
-        "PF_UNIUSD":   "UNIUSD",
         "PF_MATICUSD": "MATICUSD",
-        "PF_XBTUSD":   "XXBTZUSD",
-        "PF_ETHUSD":   "XETHZUSD",
-        "PF_BNBUSD":   "BNBUSD",
+        "PF_LINKUSD":  "LINKUSD",
+        "PF_LTCUSD":   "XLTCZUSD",
+        "PF_UNIUSD":   "UNIUSD",
+        # Expanded alts
+        "PF_DOGEUSD":  "XDGEZUSD",
+        "PF_XLMUSD":   "XXLMZUSD",
+        "PF_TONUSD":   "TONUSD",
+        "PF_FLOWUSD":  "FLOWUSD",
+        "PF_ASTERUSD": "ASTERUSD",
+        "PF_KAVAUSD":  "KAVAUSD",
+        "PF_ARCUSD":   "ARCUSD",
+        "PF_GMXUSD":   "GMXUSD",
+        "PF_ATOMUSD":  "ATOMUSD",
+        "PF_NEARUSD":  "NEARUSD",
     }
 
     def _get_spot_pair(self, futures_symbol: str) -> str:
