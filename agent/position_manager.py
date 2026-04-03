@@ -363,6 +363,61 @@ class PositionManager:
 
         return to_close
 
+    # ── Kelly position sizing ────────────────────────────────────
+
+    def kelly_position_size(self, confidence: float,
+                            min_pct: float = 0.01,
+                            max_pct: float = None) -> float:
+        """
+        Fractional Kelly criterion sizing scaled by AI confidence.
+
+        Kelly formula: f* = (p*b - q) / b
+          p = win rate,  q = 1-p,  b = avg_win / avg_loss
+
+        We then apply a half-Kelly multiplier (conservative) and
+        scale by confidence so a 60% confident call gets smaller size
+        than a 90% confident call.
+
+        Returns fraction of capital to allocate (clamped to [min_pct, max_pct]).
+        Falls back to config default when insufficient trade history.
+        """
+        cap = max_pct or config.max_position_pct
+        closed = self._state.get("closed_trades", [])
+
+        # Need at least 5 trades to calculate meaningful Kelly
+        if len(closed) < 5:
+            # No history — use confidence-scaled default
+            base = config.max_position_pct * confidence
+            return round(max(min_pct, min(base, cap)), 4)
+
+        wins  = [t["pnl"] for t in closed if t.get("pnl", 0) > 0]
+        losses = [abs(t["pnl"]) for t in closed if t.get("pnl", 0) <= 0]
+
+        if not wins or not losses:
+            base = config.max_position_pct * confidence
+            return round(max(min_pct, min(base, cap)), 4)
+
+        p = len(wins) / len(closed)            # win probability
+        q = 1 - p                               # loss probability
+        avg_win  = sum(wins) / len(wins)
+        avg_loss = sum(losses) / len(losses)
+
+        if avg_loss == 0:
+            return round(cap, 4)
+
+        b = avg_win / avg_loss                 # win/loss ratio
+        kelly = (p * b - q) / b               # full Kelly
+
+        # Half-Kelly (conservative) scaled by AI confidence
+        sized = kelly * 0.5 * confidence
+
+        result = round(max(min_pct, min(sized, cap)), 4)
+        logger.debug(
+            f"Kelly sizing: p={p:.2f} b={b:.2f} kelly={kelly:.3f} "
+            f"conf={confidence:.2f} → {result:.2%} of capital"
+        )
+        return result
+
     # ── Queries ──────────────────────────────────────────────────
 
     def get_open_positions(self) -> list[dict]:

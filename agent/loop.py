@@ -175,7 +175,14 @@ class TradingLoop:
     # ── Trade execution ──────────────────────────────────────────
 
     async def _execute_trades(self, decision):
-        """Execute trades from AI decision in paper mode."""
+        """Execute trades from AI decision using Kelly criterion sizing."""
+        # Kelly size is computed once per decision batch (same confidence for all trades)
+        kelly_size = self.positions.kelly_position_size(confidence=decision.confidence)
+        logger.info(
+            f"Kelly sizing: confidence={decision.confidence:.0%} → "
+            f"size={kelly_size:.2%} of capital per trade"
+        )
+
         for trade in decision.trades:
             symbol = trade.get("symbol")
             if not symbol:
@@ -186,10 +193,19 @@ class TradingLoop:
                 logger.warning(f"AI suggested {symbol} — not in tradeable list, skipping")
                 continue
 
+            # Check signal quality — require RSI + volume confirmation on weak signals
+            signal_quality = trade.get("signal_quality", 0)
+            if signal_quality == 0 and decision.confidence < 0.75:
+                logger.info(
+                    f"Skipping {symbol}: signal_quality=0 & confidence={decision.confidence:.0%} "
+                    f"(need quality≥1 or confidence≥75%)"
+                )
+                continue
+
             opened = self.positions.open_position(
                 symbol=symbol,
                 direction=trade.get("direction", "long"),
-                size_pct=min(trade.get("size_pct_capital", 0.05), config.max_position_pct),
+                size_pct=kelly_size,
                 entry_type=trade.get("entry_type", "market"),
                 stop_loss_pct=max(trade.get("stop_loss_pct", 0.02), 0.02),
                 take_profit_pct=trade.get("take_profit_pct", 0.04),
@@ -198,7 +214,8 @@ class TradingLoop:
 
             if opened:
                 logger.info(
-                    f"✅ Position opened: {symbol} | thesis: {trade.get('thesis', '')[:60]}"
+                    f"Position opened: {symbol} | kelly={kelly_size:.2%} | "
+                    f"thesis: {trade.get('thesis', '')[:60]}"
                 )
             await asyncio.sleep(1)  # Small gap between orders
 
@@ -214,12 +231,17 @@ class TradingLoop:
         mode_tag = "[green]PAPER[/green]" if config.paper_mode else "[red]LIVE[/red]"
         window_tag = f"[yellow]WINDOW: {window_label}[/yellow]" if in_window else "[dim]no window[/dim]"
         pnl_color = "green" if summary["today_pnl"] >= 0 else "red"
+        loss_limit_tag = (
+            "[bold red] ⛔ DAILY LOSS LIMIT[/bold red]"
+            if summary.get("daily_loss_limit_hit") else ""
+        )
         console.print(
             f"[dim]Cycle {self._cycle}[/dim] | {mode_tag} | {window_tag} | "
             f"Capital: [bold]${summary['capital']:.2f}[/bold] | "
             f"Today P&L: [{pnl_color}]{summary['today_pnl']:+.2f}[/{pnl_color}] | "
             f"Positions: {summary['open_positions']}/3 | "
-            f"Win rate: {summary['win_rate_pct']:.0f}%"
+            f"Win rate: {summary['win_rate_pct']:.0f}% ({summary['wins']}W/{summary['losses']}L)"
+            f"{loss_limit_tag}"
         )
 
     def _print_decision(self, decision):

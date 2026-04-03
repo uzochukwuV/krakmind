@@ -78,10 +78,10 @@ You will receive a full market snapshot. Analyse it and output EXACTLY this JSON
     {
       "symbol": "PF_SOLUSD",
       "direction": "long",
-      "size_pct_capital": 0.05,
       "entry_type": "market",
       "stop_loss_pct": 0.02,
       "take_profit_pct": 0.04,
+      "signal_quality": 2,
       "thesis": "SOL corr=0.82, RSI=28 (oversold), vol_spike=true, dipped -2.1%"
     }
   ],
@@ -90,6 +90,12 @@ You will receive a full market snapshot. Analyse it and output EXACTLY this JSON
 }
 ```
 
+signal_quality is an integer 0-3: count of these that are true:
+  1. alt RSI < 35 (oversold)
+  2. BTC volume spike (volume_ratio > 1.5)
+  3. alt dipping > 0.3% in 1h
+
+Note: size_pct_capital is NOT required in your output — position sizing is handled by Kelly criterion automatically.
 decision must be one of: ENTER, SKIP, HOLD, CLOSE
 If decision is SKIP/HOLD/CLOSE, set trades to [].
 """
@@ -142,10 +148,10 @@ class ContextBuilder:
             sections.append(f"""## Market Regime
 - Regime: {regime.get('regime')}
 - BTC price: ${self._fmt(regime.get('btc_price', 0), 0)}
-- SMA20 slope (5d): {self._fmt(regime.get('sma20_slope_5d'))}%
+- SMA20 slope (5d): {self._fmt(regime.get('sma20_slope_5d_pct'))}%
 - Above SMA20: {regime.get('above_sma20')}
 - Above SMA200: {regime.get('above_sma200')}
-- Reason: {regime.get('reason', '')}""")
+- Reason: {regime.get('reason', regime.get('regime', ''))}""")
         except Exception as e:
             sections.append(f"## Market Regime\nError: {e}")
 
@@ -155,13 +161,15 @@ class ContextBuilder:
             if candidates:
                 rows = "\n".join(
                     f"  - {c['symbol']}: corr={self._fmt(c.get('correlation'))}, "
-                    f"1h={self._fmt(c.get('change_1h_pct'))}%, price=${self._fmt(c.get('current_price', 0), 2)}, "
-                    f"dipping={c.get('dipping', False)}"
+                    f"1h={self._fmt(c.get('change_1h_pct'))}%, RSI={self._fmt(c.get('rsi'))}, "
+                    f"oversold={c.get('rsi_oversold')}, vol_ratio={self._fmt(c.get('volume_ratio'))}, "
+                    f"vol_spike={c.get('volume_spike')}, dipping={c.get('dipping', False)}, "
+                    f"signal_quality={c.get('signal_quality', 0)}/3"
                     for c in candidates[:8]
                 )
             else:
-                rows = "  None found"
-            sections.append(f"## High-Correlation Alt Candidates\n{rows}")
+                rows = "  None found (no alts with correlation >= threshold)"
+            sections.append(f"## High-Correlation Alt Candidates (sorted by signal quality)\n{rows}")
         except Exception as e:
             sections.append(f"## High-Correlation Alt Candidates\nError: {e}")
 
@@ -197,12 +205,17 @@ class ContextBuilder:
         # 5. Open positions & account
         try:
             summary = self.positions.get_account_summary()
+            daily_loss_hit = summary.get('daily_loss_limit_hit', False)
+            daily_limit_pct = summary.get('daily_loss_limit_pct', 3)
+            kelly_size = self.positions.kelly_position_size(confidence=0.75)  # preview at 75% conf
             sections.append(f"""## Account Summary
-- Capital: ${summary['capital']:.2f}
-- Today P&L: ${summary['today_pnl']:+.2f}
-- Open positions: {summary['open_positions']}/3
-- Win rate: {summary['win_rate_pct']:.0f}%
-- Total trades: {summary['total_trades']}""")
+- Capital: ${summary['capital']:.2f} | Peak: ${summary['peak_capital']:.2f}
+- Today P&L: ${summary['today_pnl']:+.2f} ({summary.get('today_loss_pct', 0):+.2f}%)
+- DAILY LOSS LIMIT HIT: {daily_loss_hit} (limit={daily_limit_pct:.0f}% of day-start capital)
+- Open positions: {summary['open_positions']}/3 | Deployed: ${summary['deployed']:.2f}
+- Win rate: {summary['win_rate_pct']:.0f}% ({summary['wins']}W / {summary['losses']}L)
+- Total trades: {summary['total_trades']} | Kelly size @ 75% conf: {kelly_size:.2%}
+- Trailing stop activations: {summary.get('trailing_stop_activations', 0)}""")
 
             open_pos = self.positions.get_open_positions()
             if open_pos:

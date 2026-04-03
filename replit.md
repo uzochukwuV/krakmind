@@ -1,60 +1,85 @@
 # ArbMind — AI Trading Agent
 
-An AI-first autonomous paper trading agent for Kraken Futures using LangChain + Claude Sonnet. Trades top-20 cryptocurrencies via a mean-reversion strategy triggered by BTC/ETH canary dips.
+An AI-first autonomous paper trading agent for Kraken Futures. Uses OpenRouter free LLMs, live CoinMarketCap data, and the official Kraken CLI binary. Trades top-20 cryptocurrencies via a mean-reversion strategy triggered by BTC/ETH canary dips.
 
 ## Architecture
 
 - **Language**: Python 3.12
-- **Package manager**: pip (`requirements.txt`)
-- **AI Engine**: LangChain + Claude 3.5 Sonnet (Anthropic)
-- **Exchange**: Kraken Futures (paper mode by default)
+- **AI Engine**: OpenRouter (free models — meta-llama/llama-3.3-70b-instruct:free + fallbacks)
+- **Exchange**: Kraken Futures paper mode via `kraken-cli` v0.3.0 binary
+- **Market data**: CoinMarketCap Pro API + Kraken REST SDK (OHLC, RSI, volume)
 
 ## Package Structure
 
-The codebase uses a multi-package layout (all files are in the root, but Python packages are organized into subdirectories):
-
 ```
 main.py              # Entry point
-config.py            # Central config via .env / env vars
+config.py            # Central config via env vars
 agent/
   loop.py            # Dual async loops (AI decision + position monitor)
-  ai_brain.py        # LangChain + Claude LLM integration
-  signals.py         # Signal engine: canary dips, regime, correlation
-  position_manager.py # Paper position tracking, P&L
+  ai_brain.py        # OpenRouter LLM integration + context builder
+  signals.py         # Signal engine: canary dips, RSI, volume, regime, correlation
+  position_manager.py # Paper position tracking, P&L, Kelly sizing, trailing stops
 kraken_wrappers/
-  cli_wrapper.py     # Wrapper for `kraken` CLI binary
-  rest_client.py     # python-kraken-sdk REST fallback
+  cli_wrapper.py     # Wrapper for `kraken` CLI binary (/home/runner/.cargo/bin/kraken)
+  rest_client.py     # python-kraken-sdk REST for OHLC data
 data/
-  cmc_client.py      # CoinMarketCap API client
+  cmc_client.py      # CoinMarketCap API client (top20, global metrics, F&G proxy)
   journal.py         # Trade logging and performance summary
-  journal/           # JSON/CSV trade logs
-  paper_positions.json  # Live paper position state
+  paper_positions.json  # Live paper position state (persisted across restarts)
 utils/
   logger.py          # Rich-powered logging
-logs/                # Application log files
 ```
 
-**Note**: The project wrapper packages use `kraken_wrappers/` (not `kraken/`) to avoid shadowing the `python-kraken-sdk`'s `kraken` namespace.
+## Required Environment Variables / Secrets
 
-## Required Environment Variables
-
-| Variable | Required | Description |
+| Variable | Where | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | Claude AI brain |
-| `CMC_API_KEY` | Yes | CoinMarketCap data |
+| `OPENROUTER_API_KEY` | Replit Secret | OpenRouter AI brain (free models) |
+| `CMC_API_KEY` | Env var (shared) | CoinMarketCap live market data |
 | `KRAKEN_API_KEY` | Optional | Authenticated Kraken endpoints |
-| `KRAKEN_API_SECRET` | Optional | Authenticated Kraken endpoints |
 | `KRAKEN_FUTURES_API_KEY` | Optional | Live futures (not needed for paper mode) |
-| `KRAKEN_FUTURES_API_SECRET` | Optional | Live futures (not needed for paper mode) |
 
-## Key Config Defaults (.env overrides)
+## Key Config Defaults
 
-- `PAPER_MODE=true` — always trade in paper mode unless explicitly disabled
-- `PAPER_CAPITAL=10000` — starting virtual capital
+- `PAPER_MODE=true` — always paper trade unless explicitly disabled
+- `PAPER_CAPITAL=10000` — starting virtual capital ($10,000)
 - `LOOP_INTERVAL_SECONDS=60` — main AI analysis loop
 - `POSITION_CHECK_INTERVAL=30` — position monitor interval
-- `STOP_LOSS_PCT=0.02` — 2% stop loss
+- `STOP_LOSS_PCT=0.02` — 2% base stop loss (trailing stops adjust this dynamically)
 - `TAKE_PROFIT_PCT=0.04` — 4% take profit
+- `DAILY_LOSS_LIMIT_PCT=0.03` — halt new trades if down >3% on the day
+
+## Key Features Implemented
+
+### Signal Engine (signals.py)
+- BTC/ETH canary dip detection (1h and 15m timeframes)
+- RSI (14-period, Wilder's smoothing) on BTC, ETH, and each alt candidate
+- Volume spike detection (current vs 20-period average, ratio > 1.5 = spike)
+- Signal quality score (0–3) per alt: dipping + oversold RSI + volume spike
+- Correlation matrix (48-candle rolling window) for all 9 tradeable alts
+- Market regime classification: BULL / BEAR / SIDEWAYS via SMA20 slope + SMA200
+- Time window gating: 06:00–06:30 WAT and 15:00–16:30 WAT
+
+### AI Brain (ai_brain.py)
+- OpenRouter API with 5 free model fallbacks (no tool-calling needed)
+- Full market snapshot injected into prompt: canary, regime, candidates, CMC data, account
+- Signal quality + RSI + volume + daily loss limit all surfaced to AI
+- 401 auth errors detected immediately (no wasted retries)
+
+### Risk Management (position_manager.py)
+- **Trailing stops**: break-even at +2%, profit-lock at +3% (stop moves to entry +1%)
+- **Daily loss limit**: halt all new positions if today's P&L < -3% of day-start capital
+- **Kelly criterion sizing**: `f* = (p*b - q) / b × 0.5 × confidence`
+  - Uses actual win/loss history from closed trades
+  - Falls back to `max_position_pct × confidence` with < 5 trades
+  - Confidence 60% → ~3% of capital, 90% → ~4.5% of capital
+- Max 3 concurrent positions, max 30% total capital deployed
+
+### Execution (loop.py)
+- Signal quality gate: weak signals (quality=0) require ≥75% AI confidence to trade
+- Kelly size logged per trade execution
+- Daily loss limit displayed prominently in status bar
+- Win/loss count shown in status bar
 
 ## Workflow
 
@@ -62,4 +87,4 @@ logs/                # Application log files
 
 ## External Binary
 
-The `kraken` CLI binary (Rust, from krakenfx/kraken-cli) is installed at version 3.2.7 and is found on PATH. The agent falls back to REST SDK if unavailable.
+The `kraken` CLI binary (Rust, krakenfx/kraken-cli v0.3.0) is installed at `/home/runner/.cargo/bin/kraken`. Paper trading uses `kraken paper buy/sell <PAIR> <VOLUME> --type market -o json`. No API keys needed for paper mode.
