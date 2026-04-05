@@ -7,6 +7,7 @@ pip install python-kraken-sdk
 """
 
 import asyncio
+import time
 from typing import Optional
 from kraken.spot import Market
 from kraken.futures import Market as FuturesMarket
@@ -25,6 +26,8 @@ class KrakenRESTClient:
     def __init__(self):
         self._spot_market = Market()
         self._futures_market = FuturesMarket()
+        self._price_cache = {}
+        self._price_cache_ttl = 5
 
     def get_ohlc(self, pair: str, interval: int = 15) -> list:
         """
@@ -49,6 +52,34 @@ class KrakenRESTClient:
             return data.get(pair)
         except Exception as e:
             logger.error(f"Ticker fetch failed for {pair}: {e}")
+            return None
+
+    def get_spot_price(self, pair: str) -> float | None:
+        """Returns current mid-price for a spot pair via the ticker endpoint."""
+        now = time.time()
+        if pair in self._price_cache:
+            price, timestamp = self._price_cache[pair]
+            if now - timestamp < self._price_cache_ttl:
+                return price
+
+        try:
+            data = self._spot_market.get_ticker(pair=pair)
+            pair_data = data.get(pair)
+            if not pair_data:
+                for v in data.values():
+                    if isinstance(v, dict) and "a" in v and "b" in v:
+                        pair_data = v
+                        break
+            
+            if pair_data and "a" in pair_data and "b" in pair_data:
+                ask = float(pair_data["a"][0])
+                bid = float(pair_data["b"][0])
+                mid_price = (ask + bid) / 2
+                self._price_cache[pair] = (mid_price, now)
+                return mid_price
+            return None
+        except Exception as e:
+            logger.error(f"Spot price fetch failed for {pair}: {e}")
             return None
 
     def get_futures_tickers(self) -> dict:
