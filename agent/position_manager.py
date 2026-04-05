@@ -332,7 +332,14 @@ class PositionManager:
             self._state["stats"]["losses"] += 1
 
         self._state["closed_trades"].append(closed)
+        self._state["closed_trades"] = self._state["closed_trades"][-50:]
         del self._state["positions"][position_id]
+        
+        # Log to persistent journal
+        from data.journal import TradeJournal
+        journal = TradeJournal()
+        journal.log_trade(closed)
+        
         self._save_state()
 
         emoji = "✅" if pnl > 0 else "❌"

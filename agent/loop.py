@@ -25,6 +25,7 @@ from agent.arb_loop import ArbLoop
 from agent.arb_detector import ArbDetector
 from agent.arb_executor import ArbExecutor
 from agent.rebalancer import CapitalRebalancer
+from agent.funding_harvester import FundingRateHarvester
 from data.dex_price_client import DexPriceClient
 from api import shared_state
 from utils.logger import get_logger
@@ -49,6 +50,7 @@ class TradingLoop:
         self.arb_executor = ArbExecutor(self.cli, self.positions)
         self.arb_loop = ArbLoop(self.arb_detector, self.arb_executor, self.positions)
         self.rebalancer = CapitalRebalancer(self.positions)
+        self.funding_harvester = FundingRateHarvester(self.rest, self.positions)
 
         self._cycle = 0
         self._last_decision_time = 0
@@ -79,6 +81,7 @@ class TradingLoop:
             self._position_monitor(),
             self.prism.run(),
             self.arb_loop.run(),
+            self.funding_harvester.run(),
         )
 
     # ── Loop 1: AI decision loop ─────────────────────────────────

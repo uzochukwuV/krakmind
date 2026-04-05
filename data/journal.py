@@ -9,6 +9,7 @@ import json
 import csv
 import os
 import datetime
+from typing import List, Dict
 from utils.logger import get_logger
 
 logger = get_logger("journal")
@@ -110,6 +111,70 @@ def print_performance_summary():
     print("\nLast 10 trades:")
     cols = ["symbol", "direction", "pnl", "pnl_pct", "duration_minutes", "close_reason"]
     print(df[cols].tail(10).to_string(index=False))
+
+
+JOURNAL_FILE = "data/trade_journal.json"
+
+class TradeJournal:
+    """Logs executed trades to disk for performance analysis and audit trails."""
+
+    def __init__(self):
+        os.makedirs(os.path.dirname(JOURNAL_FILE), exist_ok=True)
+        if not os.path.exists(JOURNAL_FILE):
+            with open(JOURNAL_FILE, "w") as f:
+                json.dump([], f)
+
+    def log_trade(self, trade_record: Dict):
+        """Append a closed trade to the persistent journal."""
+        trades = self._read_journal()
+        
+        # Add metadata if missing
+        if "timestamp_logged" not in trade_record:
+            trade_record["timestamp_logged"] = datetime.datetime.utcnow().isoformat()
+            
+        trades.append(trade_record)
+        self._write_journal(trades)
+
+    def get_history(self, limit: int = 50) -> List[Dict]:
+        """Fetch recent trades."""
+        trades = self._read_journal()
+        # Sort by closed_at descending (newest first)
+        trades.sort(key=lambda x: x.get("closed_at", ""), reverse=True)
+        return trades[:limit]
+
+    def get_analytics(self) -> Dict:
+        """Calculate aggregate performance metrics."""
+        trades = self._read_journal()
+        if not trades:
+            return {"total_trades": 0, "win_rate": 0.0, "total_pnl": 0.0}
+
+        wins = [t for t in trades if t.get("pnl", 0) > 0]
+        losses = [t for t in trades if t.get("pnl", 0) <= 0]
+        total_pnl = sum(t.get("pnl", 0) for t in trades)
+
+        return {
+            "total_trades": len(trades),
+            "wins": len(wins),
+            "losses": len(losses),
+            "win_rate_pct": round(len(wins) / len(trades) * 100, 2) if trades else 0.0,
+            "total_pnl_usd": round(total_pnl, 2),
+            "best_trade": max((t.get("pnl", 0) for t in trades), default=0.0),
+            "worst_trade": min((t.get("pnl", 0) for t in trades), default=0.0),
+        }
+
+    def _read_journal(self) -> List[Dict]:
+        try:
+            with open(JOURNAL_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
+
+    def _write_journal(self, trades: List[Dict]):
+        try:
+            with open(JOURNAL_FILE, "w") as f:
+                json.dump(trades, f, indent=2)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

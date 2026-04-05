@@ -56,10 +56,12 @@ def status():
     cap    = shared_state.get_section("capital")
     stats  = shared_state.get_section("stats")
     sigs   = shared_state.get_section("signals")
+    arb_st = shared_state.get_section("arb_stats")
     return {
         "agent":   agent,
         "capital": cap,
         "stats":   stats,
+        "arb_stats": arb_st,
         "signals": {
             "in_window":              sigs.get("in_window"),
             "window_label":           sigs.get("window_label"),
@@ -82,10 +84,14 @@ def positions():
 
 @app.get("/api/trades")
 def trades(limit: int = 50):
-    history = shared_state.get_section("trade_history")
-    history = sorted(history, key=lambda t: t.get("closed_at", 0), reverse=True)
+    from data.journal import TradeJournal
+    journal = TradeJournal()
+    history = journal.get_history(limit)
+    analytics = journal.get_analytics()
+    
     return {
-        "trades": history[:limit],
+        "trades": history,
+        "analytics": analytics,
         "total":  len(history),
     }
 
@@ -148,6 +154,18 @@ def coin_detail(symbol: str):
 @app.get("/api/last_decision")
 def last_decision():
     return shared_state.get_section("last_ai_decision") or {"decision": None}
+
+
+# ── Arbitrage ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/arbitrage")
+def arbitrage():
+    alerts = shared_state.get_section("arb_alerts")
+    stats = shared_state.get_section("arb_stats")
+    return {
+        "alerts": alerts,
+        "stats": stats
+    }
 
 
 # ── Server startup helper ──────────────────────────────────────────────────────
