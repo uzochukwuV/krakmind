@@ -17,13 +17,14 @@ from config import config
 from kraken_wrappers.cli_wrapper import KrakenCLI
 from kraken_wrappers.rest_client import KrakenRESTClient
 from data.cmc_client import CMCClient
-from agent.signals import SignalEngine
 from agent.ai_brain import AIBrain
+from agent.signals import SignalEngine
 from agent.position_manager import PositionManager
 from agent.prism_loop import PrismSignalEngine, prism_store
 from agent.arb_loop import ArbLoop
 from agent.arb_detector import ArbDetector
 from agent.arb_executor import ArbExecutor
+from agent.rebalancer import CapitalRebalancer
 from data.dex_price_client import DexPriceClient
 from api import shared_state
 from utils.logger import get_logger
@@ -47,6 +48,7 @@ class TradingLoop:
         self.arb_detector = ArbDetector(self.dex_prices, self.rest, self.positions)
         self.arb_executor = ArbExecutor(self.cli, self.positions)
         self.arb_loop = ArbLoop(self.arb_detector, self.arb_executor, self.positions)
+        self.rebalancer = CapitalRebalancer(self.positions)
 
         self._cycle = 0
         self._last_decision_time = 0
@@ -163,6 +165,10 @@ class TradingLoop:
 
     async def _main_cycle(self):
         """One iteration of the main loop."""
+        # Check rebalancer health occasionally
+        if self._cycle % 60 == 0:
+            await self.rebalancer.check_balances()
+
         in_window, window_label = self.signals.is_dip_window()
         summary = self.positions.get_account_summary()
 
