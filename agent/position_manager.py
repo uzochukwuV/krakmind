@@ -47,10 +47,23 @@ class PositionManager:
         capital = config.paper_capital
         return {
             "capital": capital,
+            "wallets": {
+                "kraken_spot": capital,    # Assuming all capital starts in Kraken Spot
+                "kraken_futures": 0.0,
+                "base_web3": 0.0
+            },
             "deployed": 0.0,
             "peak_capital": capital,
             "positions": {},
             "closed_trades": [],
+            "arb_alerts": [],
+            "arb_stats": {
+                "total_alerts": 0,
+                "total_estimated_pnl": 0.0,
+                "best_gap_pct": 0.0,
+                "best_gap_symbol": "",
+            },
+            "funding_alerts": [],
             "stats": {
                 "total_trades": 0,
                 "wins": 0,
@@ -182,7 +195,8 @@ class PositionManager:
                       entry_type: str = "market",
                       stop_loss_pct: float = 0.02,
                       take_profit_pct: float = 0.04,
-                      thesis: str = "") -> Optional[dict]:
+                      thesis: str = "",
+                      protocol: str = "kraken_futures") -> Optional[dict]:
         """Open a paper position. Returns position dict or None if rejected."""
         self._reset_daily_stats_if_needed()
         allowed, reason = self.can_open_position(size_pct)
@@ -190,14 +204,29 @@ class PositionManager:
             logger.warning(f"Position rejected for {symbol}: {reason}")
             return None
 
+        capital = self._state["capital"]
+        position_value = capital * size_pct
+
+        # Track protocol allocation
+        if protocol not in self._state["wallets"]:
+            self._state["wallets"][protocol] = 0.0
+            
+        if self._state["wallets"].get("kraken_spot", 0) >= position_value:
+            self._state["wallets"]["kraken_spot"] -= position_value
+            self._state["wallets"][protocol] += position_value
+        else:
+            logger.warning(f"Insufficient funds in kraken_spot to allocate to {protocol}")
+            return None
+
         spot_pair = self._get_spot_pair(symbol)
         entry_price = self._get_current_price(spot_pair)
         if not entry_price:
             logger.error(f"Cannot get price for {symbol} / {spot_pair}")
+            # Revert transfer
+            self._state["wallets"]["kraken_spot"] += position_value
+            self._state["wallets"][protocol] -= position_value
             return None
 
-        capital = self._state["capital"]
-        position_value = capital * size_pct
         quantity = position_value / entry_price
 
         # Execute paper order via CLI
@@ -287,6 +316,14 @@ class PositionManager:
         self._state["capital"] += pnl
         self._state["peak_capital"] = max(self._state.get("peak_capital", 0), self._state["capital"])
         self._state["deployed"] = max(0, self._state["deployed"] - pos["position_value"])
+        
+        # Return capital to kraken_spot (simulating settlement)
+        protocol = pos.get("protocol", "kraken_futures")
+        return_value = pos["position_value"] + pnl
+        if protocol in self._state["wallets"]:
+            self._state["wallets"][protocol] -= pos["position_value"]
+            self._state["wallets"]["kraken_spot"] += return_value
+
         self._state["stats"]["total_pnl"] += pnl
         self._state["stats"]["today_pnl"] += pnl
         if pnl > 0:
@@ -435,6 +472,7 @@ class PositionManager:
 
         return {
             "capital": round(self._state["capital"], 2),
+            "wallets": {k: round(v, 2) for k, v in self._state.get("wallets", {}).items()},
             "peak_capital": round(self._state.get("peak_capital", self._state["capital"]), 2),
             "deployed": round(self._state["deployed"], 2),
             "exposure_pct": round(self._state["deployed"] / self._state["capital"] * 100, 1),

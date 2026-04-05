@@ -305,6 +305,7 @@ class ContextBuilder:
             kelly_size = self.positions.kelly_position_size(confidence=0.75)  # preview at 75% conf
             sections.append(f"""## Account Summary
 - Capital: ${summary['capital']:.2f} | Peak: ${summary['peak_capital']:.2f}
+- Wallets: Kraken Spot: ${summary.get('wallets', {}).get('kraken_spot', 0):.2f} | Kraken Futures: ${summary.get('wallets', {}).get('kraken_futures', 0):.2f} | Base Web3: ${summary.get('wallets', {}).get('base_web3', 0):.2f}
 - Today P&L: ${summary['today_pnl']:+.2f} ({summary.get('today_loss_pct', 0):+.2f}%)
 - DAILY LOSS LIMIT HIT: {daily_loss_hit} (limit={daily_limit_pct:.0f}% of day-start capital)
 - Open positions: {summary['open_positions']}/3 | Deployed: ${summary['deployed']:.2f}
@@ -316,7 +317,8 @@ class ContextBuilder:
             if open_pos:
                 pos_rows = "\n".join(
                     f"  - {p['symbol']}: {p['direction']} | entry=${p.get('entry_price', 0):.2f} | "
-                    f"pnl=${p.get('unrealised_pnl', 0):+.2f} | age={p.get('age_minutes', 0):.0f}m"
+                    f"pnl=${p.get('unrealised_pnl', 0):+.2f} | age={p.get('age_minutes', 0):.0f}m | "
+                    f"protocol={p.get('protocol', 'kraken_futures')}"
                     for p in open_pos
                 )
                 sections.append(f"## Open Positions\n{pos_rows}")
@@ -324,6 +326,14 @@ class ContextBuilder:
                 sections.append("## Open Positions\n  None")
         except Exception as e:
             sections.append(f"## Account\nError: {e}")
+
+        # 7. Add protocol allocation logic
+        sections.append(
+            "## Capital Allocation Rules\n"
+            "  You must ensure trades are directed to the correct protocol.\n"
+            "  If kraken_spot is low (<20%), avoid large new positional trades.\n"
+            "  Consider returning funds from base_web3 or kraken_futures to kraken_spot if needed."
+        )
 
         return "\n\n".join(sections)
 
