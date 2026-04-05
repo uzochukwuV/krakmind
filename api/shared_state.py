@@ -58,17 +58,31 @@ _state: Dict[str, Any] = {
         "prices": {},
     },
     "last_ai_decision": None,
+    "arb_alerts": [],   # list of ArbOpportunity dicts, last 50
+    "arb_stats": {
+        "total_scans": 0,
+        "total_alerts": 0,
+        "best_gap_pct": 0.0,
+        "best_gap_symbol": "",
+        "estimated_pnl_missed": 0.0,   # paper mode: what we would have earned
+    }
 }
 
 
 def update(section: str, data: Dict[str, Any]) -> None:
     with _lock:
-        _state[section].update(data)
+        if isinstance(_state.get(section), dict):
+            _state[section].update(data)
+        else:
+            _state[section] = data
 
 
 def set_key(section: str, key: str, value: Any) -> None:
     with _lock:
-        _state[section][key] = value
+        if isinstance(_state.get(section), dict):
+            _state[section][key] = value
+        else:
+            _state[section] = value
 
 
 def get_snapshot() -> Dict[str, Any]:

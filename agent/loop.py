@@ -21,6 +21,10 @@ from agent.signals import SignalEngine
 from agent.ai_brain import AIBrain
 from agent.position_manager import PositionManager
 from agent.prism_loop import PrismSignalEngine, prism_store
+from agent.arb_loop import ArbLoop
+from agent.arb_detector import ArbDetector
+from agent.arb_executor import ArbExecutor
+from data.dex_price_client import DexPriceClient
 from api import shared_state
 from utils.logger import get_logger
 
@@ -38,6 +42,11 @@ class TradingLoop:
         self.positions = PositionManager(self.cli)
         self.brain = AIBrain(self.signals, self.cmc, self.positions)
         self.prism = PrismSignalEngine(position_manager=self.positions)
+        
+        self.dex_prices = DexPriceClient()
+        self.arb_detector = ArbDetector(self.dex_prices, self.rest, self.positions)
+        self.arb_executor = ArbExecutor(self.cli, self.positions)
+        self.arb_loop = ArbLoop(self.arb_detector, self.arb_executor, self.positions)
 
         self._cycle = 0
         self._last_decision_time = 0
@@ -61,12 +70,13 @@ class TradingLoop:
     # ── Main entry ──────────────────────────────────────────────
 
     async def run(self):
-        """Start all three async loops concurrently."""
-        logger.info("Starting trading loops (main + position monitor + Prism signals)...")
+        """Start all async loops concurrently."""
+        logger.info("Starting trading loops (main + position monitor + Prism signals + Arb)...")
         await asyncio.gather(
             self._main_loop(),
             self._position_monitor(),
             self.prism.run(),
+            self.arb_loop.run(),
         )
 
     # ── Loop 1: AI decision loop ─────────────────────────────────

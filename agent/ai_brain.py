@@ -14,6 +14,7 @@ from openai import OpenAI
 from utils.logger import get_logger
 from config import config
 from agent.prism_loop import prism_store
+from api import shared_state
 
 logger = get_logger("ai_brain")
 
@@ -56,6 +57,9 @@ Your core edge:
 - Prism signals with score ≥ 3 are strong enough to trigger entries outside time windows.
 - BTC/ETH funding rates signal leverage sentiment — neutral/negative = safer for longs.
 - Social sentiment "bullish" + oversold RSI = high-conviction setup.
+- Arb signal validation: if an arb opportunity exists for your trade candidate with
+  net_gap_pct > 0.3% in the same direction, add 0.1 to confidence score.
+- If arb gap direction CONTRADICTS your mean-reversion trade, reduce confidence by 0.15.
 
 Decision rules:
 1. If regime = BEAR AND no Prism strong signal → SKIP.
@@ -274,6 +278,25 @@ class ContextBuilder:
                 sections.append(f"## Prism Market Intelligence\n  Stale or unavailable (age={prism_store.age_seconds/60:.0f}m)")
         except Exception as e:
             sections.append(f"## Prism\nError: {e}")
+
+        # Arb signals section
+        try:
+            arb_alerts = shared_state.get_section("arb_alerts")
+            if isinstance(arb_alerts, list):
+                recent = [a for a in arb_alerts if time.time() - a.get("detected_at", 0) < 300]
+                if recent:
+                    rows = "\n".join(
+                        f"  {a['symbol']}: gap={a['net_gap_pct']:+.2f}% | dir={a['direction']} | "
+                        f"liquidity=${a['dex_liquidity_usd']/1e6:.1f}M | confidence={a['confidence']:.2f}"
+                        for a in recent[:5]
+                    )
+                    sections.append(f"## Live Arb Opportunities (last 5min)\n{rows}")
+                else:
+                    sections.append("## Live Arb Opportunities\n  None detected in last 5min")
+            else:
+                sections.append("## Live Arb Opportunities\n  None detected in last 5min")
+        except Exception as e:
+            sections.append(f"## Arb Opportunities\nError: {e}")
 
         # 6. Open positions & account
         try:
