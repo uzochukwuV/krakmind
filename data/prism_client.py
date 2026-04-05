@@ -175,6 +175,70 @@ class PrismClient:
         """
         return self._get(f"/dex/{symbol}/funding/all", ttl=300)
 
+    def get_venue_prices(self, symbol: str) -> dict:
+        """Get prices across multiple venues (CEX & DEX)."""
+        data = self._get(f"/resolve/{symbol}", ttl=10)
+        if not data:
+            return {}
+            
+        venues = data.get("venues", [])
+        prices = {}
+        for venue in venues:
+            v_type = venue.get("type")
+            if v_type in ["cex_spot", "dex_perp", "dex_spot"]:
+                name = venue.get("name", "").lower()
+                if name:
+                    # Prism API returns top level price_usd for the consensus price
+                    # Using consensus as proxy if venue specific isn't available
+                    prices[name] = venue.get("price_usd") or data.get("price_usd")
+        return prices
+
+    def get_dex_search(self, symbol: str, chain: str = "base") -> list[dict]:
+        """Search DEX pairs for a token."""
+        now = time.time()
+        cache_key = f"dex_search_{symbol}_{chain}"
+        if cache_key in self._cache:
+            data, ts = self._cache[cache_key]
+            if now - ts < 60:
+                return data
+
+        gap = time.time() - PrismClient._last_call_ts
+        if gap < PrismClient._min_call_gap:
+            time.sleep(PrismClient._min_call_gap - gap)
+            
+        PrismClient._last_call_ts = time.time()
+        
+        try:
+            resp = self.session.post(
+                f"{PRISM_BASE}/dex/search",
+                json={"q": symbol, "chain": chain},
+                timeout=12
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                pairs = data.get("pairs", [])
+                aerodrome_pairs = [p for p in pairs if p.get("dexId") == "aerodrome"]
+                self._cache[cache_key] = (aerodrome_pairs, now)
+                return aerodrome_pairs
+            elif resp.status_code == 429:
+                time.sleep(15)
+        except Exception as e:
+            logger.error(f"Prism DEX search failed for {symbol}: {e}")
+        return []
+
+    def get_funding_rates_all(self, symbol: str) -> dict:
+        """Get funding rates across all DEX perps."""
+        data = self._get(f"/dex/{symbol}/funding/all", ttl=300)
+        if not data:
+            return {}
+            
+        return {
+            "best_for_long": data.get("best_for_long"),
+            "best_for_short": data.get("best_for_short"),
+            "interpretation": data.get("interpretation"),
+            "rates": data.get("funding_rates", {})
+        }
+
     # ── Full signal snapshot ─────────────────────────────────────
 
     def get_signal_snapshot(self) -> dict:
@@ -200,6 +264,14 @@ class PrismClient:
         # Funding rate for BTC (proxy for overall market leverage sentiment)
         btc_funding = self.get_funding_rate("BTC") or {}
         eth_funding = self.get_funding_rate("ETH") or {}
+
+        # Venue prices for BTC and ETH
+        btc_venues = self.get_venue_prices("BTC")
+        eth_venues = self.get_venue_prices("ETH")
+        venue_spreads = {
+            "BTC": btc_venues,
+            "ETH": eth_venues
+        }
 
         # Build per-alt signal dicts (enriched price + sentiment + funding)
         alt_signals = {}
@@ -252,6 +324,7 @@ class PrismClient:
                     "interpretation": eth_funding.get("_interpretation", ""),
                 },
             },
+            "venue_spreads": venue_spreads,
             "alt_signals": alt_signals,
         }
 
