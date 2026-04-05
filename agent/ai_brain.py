@@ -70,7 +70,9 @@ Decision rules:
    c. Prism signal score ≥ 3 for the target alt
    d. Fear & Greed ≤ 40 (fear = mean-reversion opportunity)
    e. Alt RSI < 35 (oversold on technical)
-5. Always set stop_loss_pct >= 0.02. Take profit >= 0.03.
+5. For stop_loss_pct, adapt to the coin's volatility. Typically use 2-4%.
+   For take_profit_pct, typically use 3-8% depending on RSI momentum.
+   DO NOT use static numbers. Adjust SL/TP based on the specific asset's liquidity and fear/greed.
 6. Confidence < 0.6 → SKIP. Low quality signals (score=0) need confidence ≥ 0.75.
 7. Only trade symbols from: PF_SOLUSD, PF_XRPUSD, PF_ADAUSD, PF_AVAXUSD,
    PF_DOTUSD, PF_LINKUSD, PF_LTCUSD, PF_UNIUSD, PF_MATICUSD, PF_BNBUSD.
@@ -279,6 +281,8 @@ class ContextBuilder:
             sections.append(f"## Prism\nError: {e}")
 
         # Arb signals section
+        # NOTE: Arbitrage is now mostly auto-executed by arb_executor, but we still feed it to AI 
+        # so it knows if there's massive order book imbalance.
         try:
             arb_alerts = shared_state.get_section("arb_alerts")
             if isinstance(arb_alerts, list):
@@ -286,16 +290,16 @@ class ContextBuilder:
                 if recent:
                     rows = "\n".join(
                         f"  {a['symbol']}: gap={a['net_gap_pct']:+.2f}% | dir={a['direction']} | "
-                        f"liquidity=${a['dex_liquidity_usd']/1e6:.1f}M | confidence={a['confidence']:.2f}"
+                        f"liquidity=${a['dex_liquidity_usd']/1e6:.1f}M"
                         for a in recent[:5]
                     )
-                    sections.append(f"## Live Arb Opportunities (last 5min)\n{rows}")
+                    sections.append(f"## Live Arb Imbalances (last 5min)\n{rows}")
                 else:
-                    sections.append("## Live Arb Opportunities\n  None detected in last 5min")
+                    sections.append("## Live Arb Imbalances\n  None detected in last 5min")
             else:
-                sections.append("## Live Arb Opportunities\n  None detected in last 5min")
+                sections.append("## Live Arb Imbalances\n  None detected in last 5min")
         except Exception as e:
-            sections.append(f"## Arb Opportunities\nError: {e}")
+            sections.append(f"## Arb Imbalances\nError: {e}")
 
         # 6. Open positions & account
         try:

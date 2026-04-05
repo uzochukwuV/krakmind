@@ -7,9 +7,7 @@ logger = get_logger("arb_detector")
 
 KRAKEN_TAKER_FEE = 0.0026   # 0.26%
 AERODROME_POOL_FEE = 0.003    # 0.3% volatile pool
-SLIPPAGE_ESTIMATE = 0.002    # 0.2% conservative
-TOTAL_ROUND_TRIP_COST = (KRAKEN_TAKER_FEE + AERODROME_POOL_FEE + SLIPPAGE_ESTIMATE) * 2
-MIN_NET_GAP_PCT = 0.004    # 0.4% min net profit after all costs
+MIN_NET_GAP_PCT = 0.002    # Lowered from 0.4% to 0.2% to catch more opportunities since slippage is now dynamic
 
 
 @dataclass
@@ -59,15 +57,22 @@ class ArbDetector:
             dex_liquidity_usd = float(dex_data.get("liquidity", {}).get("usd", 0))
             
             raw_gap_pct, direction = self._compute_gap(kraken_price, dex_price)
-            net_gap_pct = raw_gap_pct - TOTAL_ROUND_TRIP_COST * 100
+            # Net gap calculation moved down to dynamically calculate total_cost
             
             # Position sizing
-            confidence = self.position_manager.kelly_position_size(0.8) # Default confidence for sizing
-            position_size_pct = min(confidence, 0.02) # Max 2% for arb
-            # We assume a $10000 portfolio if not available directly for calculation
-            position_size_usd = config.paper_capital * position_size_pct
+            # Instead of a flat 2% max, scale with gap and liquidity, up to 15% of capital for risk-free arb
+            max_arb_allocation = 0.15 
+            position_size_usd = min(
+                config.paper_capital * max_arb_allocation,
+                dex_liquidity_usd * 0.01  # Don't take more than 1% of pool liquidity to avoid massive slippage
+            )
             
-            if net_gap_pct >= MIN_NET_GAP_PCT * 100 and dex_liquidity_usd >= position_size_usd * 10:
+            # Dynamic slippage estimate based on trade size vs liquidity (simplified constant product impact)
+            dynamic_slippage = (position_size_usd / dex_liquidity_usd) if dex_liquidity_usd > 0 else 0.01
+            total_cost = (KRAKEN_TAKER_FEE + AERODROME_POOL_FEE + dynamic_slippage) * 2
+            net_gap_pct = raw_gap_pct - total_cost * 100
+            
+            if net_gap_pct >= MIN_NET_GAP_PCT * 100 and dex_liquidity_usd >= position_size_usd * 2:
                 calc_confidence = self._confidence(net_gap_pct, dex_liquidity_usd, position_size_usd)
                 est_profit = self._estimated_profit(net_gap_pct, position_size_usd)
                 

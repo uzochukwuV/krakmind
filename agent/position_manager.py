@@ -134,6 +134,8 @@ class PositionManager:
         - At +TRAILING_BREAKEVEN_PCT: move stop to entry (break-even)
         - At +TRAILING_LOCK_PCT: move stop to entry + TRAILING_LOCK_BUFFER (lock profit)
         """
+        # If ATR or volatility data exists in the future, we could replace these static bands.
+        # Currently defaults to 2% break-even and 3% trail logic.
         for pos_id, pos in self._state["positions"].items():
             price = self._get_current_price(pos["spot_pair"])
             if not price:
