@@ -18,21 +18,20 @@ from api import shared_state
 
 logger = get_logger("ai_brain")
 
-OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+GROQ_BASE = "https://api.groq.com/openai/v1"
 
-# Models tried in priority order — all free, no tool-use required
+# Models tried in priority order
 FREE_MODELS = [
-    "deepseek/deepseek-r1:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemini-2.0-flash-lite-preview-02-05:free",
-    "google/gemma-2-9b-it:free"
+    "openai/gpt-oss-120b",
+    "llama3-70b-8192",
+    "mixtral-8x7b-32768"
 ]
 
 
 def _get_client() -> OpenAI:
-    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    api_key = os.getenv("GROQ_API_KEY", "")
     return OpenAI(
-        base_url=OPENROUTER_BASE,
+        base_url=GROQ_BASE,
         api_key=api_key,
         default_headers={
             "HTTP-Referer": "https://arbmind.replit.app",
@@ -358,42 +357,38 @@ class AIBrain:
     def __init__(self, signal_engine, cmc_client, position_manager):
         self.client = _get_client()
         self.context_builder = ContextBuilder(signal_engine, cmc_client, position_manager)
-        self.model = os.getenv("OPENROUTER_MODEL", FREE_MODELS[0])
-        logger.info(f"AI Brain initialised: {self.model} via OpenRouter")
+        self.model = os.getenv("GROQ_MODEL", FREE_MODELS[0])
+        logger.info(f"AI Brain initialised: {self.model} via Groq")
 
-    def _chat(self, messages: list, max_tokens: int = 1024) -> Optional[str]:
-        """Call OpenRouter, trying each free model until one succeeds."""
-        api_key = os.getenv("OPENROUTER_API_KEY", "")
-        if not api_key:
-            logger.error("OPENROUTER_API_KEY not set — AI brain disabled")
+    def _chat(self, messages: list, max_tokens: int = 1500) -> Optional[str]:
+        """Call API, trying each model until one succeeds."""
+        client = _get_client()
+        if not client.api_key:
+            logger.error("API key missing. AI decisions skipped.")
             return None
 
-        models_to_try = [self.model] + [m for m in FREE_MODELS if m != self.model]
-        for model in models_to_try:
+        for model in FREE_MODELS:
             try:
-                resp = self.client.chat.completions.create(
+                logger.debug(f"Attempting model {model}...")
+                resp = client.chat.completions.create(
                     model=model,
                     messages=messages,
+                    temperature=1.0,
                     max_tokens=max_tokens,
-                    temperature=0.15,
+                    top_p=1.0,
+                    stream=False
                 )
                 if resp.choices and resp.choices[0].message.content:
-                    if model != self.model:
-                        logger.info(f"Using fallback model: {model}")
+                    self.model = model
                     return resp.choices[0].message.content
-                logger.warning(f"Model {model} returned empty response — trying next")
             except Exception as e:
-                err_str = str(e)
-                # 401 means bad key — no point trying other models
-                if "401" in err_str or "User not found" in err_str or "AuthenticationError" in err_str:
-                    logger.error(
-                        "OpenRouter API key invalid or expired (401). "
-                        "Update OPENROUTER_API_KEY at openrouter.ai/keys — AI decisions skipped."
-                    )
+                err_msg = str(e)
+                if "401" in err_msg:
+                    logger.error("API key invalid or expired (401) — AI decisions skipped.")
                     return None
-                logger.warning(f"Model {model} failed: {err_str[:100]} — trying next")
-                time.sleep(1)
-        logger.error("All OpenRouter models failed")
+                logger.warning(f"Model {model} failed: {err_msg[:100]} — trying next")
+        
+        logger.error("All models failed")
         return None
 
     def analyze_and_decide(self, loop_name: str, symbols: list = None) -> "TradeDecision":
@@ -427,7 +422,7 @@ Follow your decision rules strictly. Output only the JSON block."""
             {"role": "user", "content": prompt},
         ]
 
-        raw = self._chat(messages, max_tokens=1024)
+        raw = self._chat(messages, max_tokens=1500)
         if not raw:
             raw = '{"decision":"SKIP","confidence":0,"reasoning":"API unavailable","trades":[],"market_context":"","next_check_minutes":15}'
 
