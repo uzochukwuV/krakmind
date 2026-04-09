@@ -26,6 +26,10 @@ class CMCClient:
         self._cache_ttl = 120  # seconds — CMC free tier is credit-based
 
     def _cached_get(self, url: str, params: dict, cache_key: str) -> Optional[dict]:
+        if not self.api_key:
+            logger.warning(f"No CMC_API_KEY found in .env! Returning mock data for {cache_key}")
+            return self._get_mock_data(cache_key)
+            
         now = time.time()
         if cache_key in self._cache:
             data, ts = self._cache[cache_key]
@@ -33,13 +37,46 @@ class CMCClient:
                 return data
         try:
             resp = requests.get(url, headers=self.headers, params=params, timeout=10)
+            if resp.status_code == 401:
+                logger.error("CMC API Key is invalid (401 Unauthorized). Switching to mock data.")
+                self.api_key = "" # Disable future requests to prevent spam
+                return self._get_mock_data(cache_key)
+                
             resp.raise_for_status()
             data = resp.json()
             self._cache[cache_key] = (data, now)
             return data
         except requests.RequestException as e:
             logger.error(f"CMC request failed: {e}")
-            return None
+            return self._get_mock_data(cache_key)
+
+    def _get_mock_data(self, cache_key: str) -> dict:
+        """Returns fallback mock data if CMC API key is missing or invalid."""
+        if cache_key == "top20":
+            return {
+                "data": [
+                    {"id": 1, "name": "Bitcoin", "symbol": "BTC", "slug": "bitcoin", "cmc_rank": 1, 
+                     "quote": {"USD": {"price": 65000, "percent_change_1h": 0.1, "percent_change_24h": 1.2, "percent_change_7d": -2.0, "volume_24h": 35000000000, "market_cap": 1200000000000, "market_cap_dominance": 52.0}}},
+                    {"id": 2, "name": "Ethereum", "symbol": "ETH", "slug": "ethereum", "cmc_rank": 2,
+                     "quote": {"USD": {"price": 3500, "percent_change_1h": -0.2, "percent_change_24h": 2.5, "percent_change_7d": 1.5, "volume_24h": 15000000000, "market_cap": 400000000000, "market_cap_dominance": 17.5}}},
+                ]
+            }
+        elif cache_key == "global_metrics":
+            return {
+                "data": {
+                    "btc_dominance": 52.0,
+                    "eth_dominance": 17.5,
+                    "active_cryptocurrencies": 10000,
+                    "quote": {
+                        "USD": {
+                            "total_market_cap": 2500000000000,
+                            "total_volume_24h": 80000000000,
+                            "total_market_cap_yesterday_percentage_change": 1.5
+                        }
+                    }
+                }
+            }
+        return {}
 
     def get_top20_listings(self) -> list[dict]:
         """
