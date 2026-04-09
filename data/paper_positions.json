@@ -20,10 +20,10 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 0.052,
-      "unrealized_pnl_pct": 0.012,
+      "unrealized_pnl": 0.7797,
+      "unrealized_pnl_pct": 0.183,
       "trailing_stage": 0,
-      "current_price": 81.77
+      "current_price": 81.91
     },
     "PF_SOLUSD_1775743712": {
       "id": "PF_SOLUSD_1775743712",
@@ -43,10 +43,10 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 0.0526,
-      "unrealized_pnl_pct": 0.012,
+      "unrealized_pnl": 0.7889,
+      "unrealized_pnl_pct": 0.183,
       "trailing_stage": 0,
-      "current_price": 81.77
+      "current_price": 81.91
     },
     "PF_SOLUSD_1775743752": {
       "id": "PF_SOLUSD_1775743752",
@@ -66,9 +66,10 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 0.0,
-      "unrealized_pnl_pct": 0.0,
-      "trailing_stage": 0
+      "unrealized_pnl": 0.7362,
+      "unrealized_pnl_pct": 0.171,
+      "trailing_stage": 0,
+      "current_price": 81.91
     }
   },
   "closed_trades": [],
