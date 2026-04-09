@@ -25,8 +25,8 @@ class Config:
     paper_mode: bool = field(default_factory=lambda: os.getenv("PAPER_MODE", "true").lower() == "true")
 
     # Timing
-    loop_interval: int = field(default_factory=lambda: int(os.getenv("LOOP_INTERVAL_SECONDS", "60")))
-    position_check_interval: int = field(default_factory=lambda: int(os.getenv("POSITION_CHECK_INTERVAL", "30")))
+    loop_interval: int = field(default_factory=lambda: int(os.getenv("LOOP_INTERVAL_SECONDS", "15")))
+    position_check_interval: int = field(default_factory=lambda: int(os.getenv("POSITION_CHECK_INTERVAL", "15")))
 
     # Risk params
     max_position_pct: float = field(default_factory=lambda: float(os.getenv("MAX_POSITION_PCT", "0.05")))

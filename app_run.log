@@ -1,8 +1,453 @@
-Traceback (most recent call last):
-  File "/workspace/main.py", line 9, in <module>
-    from agent.loop import TradingLoop
-  File "/workspace/agent/loop.py", line 19, in <module>
-    from data.cmc_client import CMCClient
-  File "/workspace/data/__init__.py", line 3, in <module>
-    from .dex_price_client import DexPriceClient
-ModuleNotFoundError: No module named 'data.dex_price_client'
+[20:17:16] INFO     ================================================= main.py:27
+                    ===========                                                 
+           INFO       ArbMind Trading Agent — PAPER MODE              main.py:28
+           INFO       AI-first | Kraken Futures | Top-20 CMC          main.py:29
+           INFO     ================================================= main.py:30
+                    ===========                                                 
+           INFO     Dashboard API started on http://0.0.0.0:8000   server.py:180
+           INFO     Dashboard API running on port 8000                main.py:34
+           INFO     Initialising ArbMind components (Perp, Options,   loop.py:34
+                    Meme Spot)...                                               
+           INFO     Kraken CLI found: 3.2.7                    cli_wrapper.py:58
+                    (/root/.pyenv/versions/3.14.3/bin/kraken)                   
+           INFO     AI Brain initialised: llama3-70b-8192 via    ai_brain.py:363
+                    Groq                                                        
+           INFO     Prism Signal Engine initialised            prism_loop.py:104
+           INFO     Mode: PAPER                                       loop.py:53
+           INFO     Capital: $10000.00                                loop.py:54
+           INFO     Loop interval: 15s                                loop.py:55
+           INFO     Prism Signal Engine: enabled (polling every 5m)   loop.py:56
+           INFO     Starting 3 independent trading loops (Perp,       loop.py:71
+                    Options, Meme) + position monitor...                        
+Cycle 1 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
+0/10 | Win rate: 75% (3W/0L)
+[20:17:45] INFO     [PERP] Analysis triggered by:                    loop.py:207
+           INFO     [PERP] Invoking AI analysis...                   loop.py:210
+           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
+                    [PERP]...                                                   
+[20:17:46] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for top20                                         
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for global_metrics                                
+           INFO     [OPTIONS] Analysis triggered by:                 loop.py:207
+           INFO     [OPTIONS] Invoking AI analysis...                loop.py:210
+           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
+                    [OPTIONS]...                                                
+[20:17:47] INFO     [MEME] Analysis triggered by:                    loop.py:207
+                    volatility(BONKUSD)                                         
+           INFO     [MEME] Invoking AI analysis...                   loop.py:210
+           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
+                    [MEME]...                                                   
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for top20                                         
+           INFO     Prism Signal Engine starting...            prism_loop.py:108
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for global_metrics                                
+           INFO     Fetching Prism signal snapshot...        prism_client.py:249
+[20:17:48] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for top20                                         
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for global_metrics                                
+           INFO     HTTP Request: POST                           _client.py:1025
+                    https://api.groq.com/openai/v1/chat/completi                
+                    ons "HTTP/1.1 401 Unauthorized"                             
+           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
+                    MOCK Hackathon decision to simulate trade.                  
+           INFO     AI raw output (290 chars)                    ai_brain.py:433
+           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
+                    trades=1                                                    
+╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
+│ Decision: ENTER                                                              │
+│ Confidence: 95%                                                              │
+│ Context: Mock context                                                        │
+│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
+│                                                                              │
+│ Trades:                                                                      │
+│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
+│     thesis: Mock trade for Hackathon demo                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+                           Proposed Trades (MEME)                           
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
+└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
+           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
+                    of capital per trade                                        
+           INFO     HTTP Request: POST                           _client.py:1025
+                    https://api.groq.com/openai/v1/chat/completi                
+                    ons "HTTP/1.1 401 Unauthorized"                             
+           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
+                    MOCK Hackathon decision to simulate trade.                  
+           INFO     AI raw output (290 chars)                    ai_brain.py:433
+           INFO     HTTP Request: POST                           _client.py:1025
+                    https://api.groq.com/openai/v1/chat/completi                
+                    ons "HTTP/1.1 401 Unauthorized"                             
+           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
+                    trades=1                                                    
+           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
+                    MOCK Hackathon decision to simulate trade.                  
+           INFO     AI raw output (290 chars)                    ai_brain.py:433
+           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
+                    trades=1                                                    
+[20:17:49] INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
+           WARNING  CLI paper order failed, simulating:  position_manager.py:243
+                    CLI error (exit 2): Usage: kraken                           
+                    [OPTIONS] COMMAND [ARGS]...                                 
+                    Try 'kraken -h' for help.                                   
+                                                                                
+                    Error: No such command 'paper'.                             
+           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
+                    entry=84.4300 | stop=75.9870 |                              
+                    target=109.7590 | size=$476.94                              
+           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
+                    | thesis: Mock trade for Hackathon demo                     
+╭─────────────────────────── AI Analysis [OPTIONS] ────────────────────────────╮
+│ Decision: ENTER                                                              │
+│ Confidence: 95%                                                              │
+│ Context: Mock context                                                        │
+│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
+│                                                                              │
+│ Trades:                                                                      │
+│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
+│     thesis: Mock trade for Hackathon demo                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+                         Proposed Trades (OPTIONS)                          
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
+└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
+           INFO     [OPTIONS] Kelly sizing: confidence=95% →         loop.py:286
+                    size=4.75% of capital per trade                             
+           INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
+           WARNING  CLI paper order failed, simulating:  position_manager.py:243
+                    CLI error (exit 2): Usage: kraken                           
+                    [OPTIONS] COMMAND [ARGS]...                                 
+                    Try 'kraken -h' for help.                                   
+                                                                                
+                    Error: No such command 'paper'.                             
+           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
+                    entry=84.4300 | stop=75.9870 |                              
+                    target=109.7590 | size=$476.94                              
+           INFO     [OPTIONS] Position opened: PF_SOLUSD |           loop.py:320
+                    kelly=4.75% | thesis: Mock trade for Hackathon              
+                    demo                                                        
+╭───────────────────────────── AI Analysis [PERP] ─────────────────────────────╮
+│ Decision: ENTER                                                              │
+│ Confidence: 95%                                                              │
+│ Context: Mock context                                                        │
+│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
+│                                                                              │
+│ Trades:                                                                      │
+│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
+│     thesis: Mock trade for Hackathon demo                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+                           Proposed Trades (PERP)                           
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
+└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
+           INFO     [PERP] Kelly sizing: confidence=95% → size=4.75% loop.py:286
+                    of capital per trade                                        
+           INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
+           WARNING  CLI paper order failed, simulating:  position_manager.py:243
+                    CLI error (exit 2): Usage: kraken                           
+                    [OPTIONS] COMMAND [ARGS]...                                 
+                    Try 'kraken -h' for help.                                   
+                                                                                
+                    Error: No such command 'paper'.                             
+           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
+                    entry=84.4300 | stop=75.9870 |                              
+                    target=109.7590 | size=$476.94                              
+           INFO     [PERP] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
+                    | thesis: Mock trade for Hackathon demo                     
+Cycle 2 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
+1/10 | Win rate: 43% (3W/0L)
+[20:18:02] INFO     [MEME] Analysis triggered by:                    loop.py:207
+                    volatility(BONKUSD)                                         
+           INFO     [MEME] Invoking AI analysis...                   loop.py:210
+           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
+                    [MEME]...                                                   
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for top20                                         
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for global_metrics                                
+[20:18:03] INFO     HTTP Request: POST                           _client.py:1025
+                    https://api.groq.com/openai/v1/chat/completi                
+                    ons "HTTP/1.1 401 Unauthorized"                             
+           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
+                    MOCK Hackathon decision to simulate trade.                  
+           INFO     AI raw output (290 chars)                    ai_brain.py:433
+           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
+                    trades=1                                                    
+╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
+│ Decision: ENTER                                                              │
+│ Confidence: 95%                                                              │
+│ Context: Mock context                                                        │
+│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
+│                                                                              │
+│ Trades:                                                                      │
+│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
+│     thesis: Mock trade for Hackathon demo                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+                           Proposed Trades (MEME)                           
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
+└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
+           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
+                    of capital per trade                                        
+           INFO     [PAPER] BUY 5.6503 SOLUSD @ market        cli_wrapper.py:151
+           WARNING  CLI paper order failed, simulating:  position_manager.py:243
+                    CLI error (exit 2): Usage: kraken                           
+                    [OPTIONS] COMMAND [ARGS]...                                 
+                    Try 'kraken -h' for help.                                   
+                                                                                
+                    Error: No such command 'paper'.                             
+           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
+                    entry=84.4100 | stop=75.9690 |                              
+                    target=109.7330 | size=$476.94                              
+           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
+                    | thesis: Mock trade for Hackathon demo                     
+Cycle 3 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
+2/10 | Win rate: 38% (3W/0L)
+[20:18:15] ERROR    Prism poll #1 failed: closing tag          prism_loop.py:133
+                    '(/market/fear-greed)' at position 21                       
+                    doesn't match any open tag                                  
+                    ╭── Traceback (most recent call last) ───╮                  
+                    │ /workspace/agent/prism_loop.py:123 in  │                  
+                    │ _poll                                  │                  
+                    │                                        │                  
+                    │   120 │   │   self._cycle += 1         │                  
+                    │   121 │   │   try:                     │                  
+                    │   122 │   │   │   # Run blocking HTTP  │                  
+                    │ ❱ 123 │   │   │   snapshot = await asy │                  
+                    │   124 │   │   │   │   None, self.clien │                  
+                    │   125 │   │   │   )                    │                  
+                    │   126 │   │   │   signals = self._clas │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/concurrent/futures/thread.py:86  │                  
+                    │ in run                                 │                  
+                    │                                        │                  
+                    │    83 │   │   │   return               │                  
+                    │    84 │   │                            │                  
+                    │    85 │   │   try:                     │                  
+                    │ ❱  86 │   │   │   result = ctx.run(sel │                  
+                    │    87 │   │   except BaseException as  │                  
+                    │    88 │   │   │   self.future.set_exce │                  
+                    │    89 │   │   │   # Break a reference  │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/concurrent/futures/thread.py:73  │                  
+                    │ in run                                 │                  
+                    │                                        │                  
+                    │    70 │                                │                  
+                    │    71 │   def run(self, task):         │                  
+                    │    72 │   │   fn, args, kwargs = task  │                  
+                    │ ❱  73 │   │   return fn(*args, **kwarg │                  
+                    │    74                                  │                  
+                    │    75                                  │                  
+                    │    76 class _WorkItem:                 │                  
+                    │                                        │                  
+                    │ /workspace/data/prism_client.py:256 in │                  
+                    │ get_signal_snapshot                    │                  
+                    │                                        │                  
+                    │   253 │   │                            │                  
+                    │   254 │   │   # Market-wide data       │                  
+                    │   255 │   │   global_data   = self.get │                  
+                    │ ❱ 256 │   │   fear_greed    = self.get │                  
+                    │   257 │   │   gainers       = self.get │                  
+                    │   258 │   │   losers        = self.get │                  
+                    │   259 │   │   trending      = self.get │                  
+                    │                                        │                  
+                    │ /workspace/data/prism_client.py:124 in │                  
+                    │ get_fear_greed                         │                  
+                    │                                        │                  
+                    │   121 │                                │                  
+                    │   122 │   def get_fear_greed(self) ->  │                  
+                    │   123 │   │   """Real Fear & Greed ind │                  
+                    │ ❱ 124 │   │   return self._get("/marke │                  
+                    │   125 │                                │                  
+                    │   126 │   def get_gainers(self, limit: │                  
+                    │   127 │   │   """Top 24h gainers acros │                  
+                    │                                        │                  
+                    │ /workspace/data/prism_client.py:95 in  │                  
+                    │ _get                                   │                  
+                    │                                        │                  
+                    │    92 │   │   │   else:                │                  
+                    │    93 │   │   │   │   logger.warning(f │                  
+                    │    94 │   │   except requests.RequestE │                  
+                    │ ❱  95 │   │   │   logger.error(f"Prism │                  
+                    │    96 │   │   return None              │                  
+                    │    97 │                                │                  
+                    │    98 │   # ── Consensus prices ────── │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/logging/__init__.py:1549 in      │                  
+                    │ error                                  │                  
+                    │                                        │                  
+                    │   1546 │   │   logger.error("Houston,  │                  
+                    │   1547 │   │   """                     │                  
+                    │   1548 │   │   if self.isEnabledFor(ER │                  
+                    │ ❱ 1549 │   │   │   self._log(ERROR, ms │                  
+                    │   1550 │                               │                  
+                    │   1551 │   def exception(self, msg, *a │                  
+                    │   1552 │   │   """                     │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/logging/__init__.py:1665 in _log │                  
+                    │                                        │                  
+                    │   1662 │   │   │   │   exc_info = sys. │                  
+                    │   1663 │   │   record = self.makeRecor │                  
+                    │   1664 │   │   │   │   │   │   │   │   │                  
+                    │ ❱ 1665 │   │   self.handle(record)     │                  
+                    │   1666 │                               │                  
+                    │   1667 │   def handle(self, record):   │                  
+                    │   1668 │   │   """                     │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/logging/__init__.py:1681 in      │                  
+                    │ handle                                 │                  
+                    │                                        │                  
+                    │   1678 │   │   │   return              │                  
+                    │   1679 │   │   if isinstance(maybe_rec │                  
+                    │   1680 │   │   │   record = maybe_reco │                  
+                    │ ❱ 1681 │   │   self.callHandlers(recor │                  
+                    │   1682 │                               │                  
+                    │   1683 │   def addHandler(self, hdlr): │                  
+                    │   1684 │   │   """                     │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/logging/__init__.py:1737 in      │                  
+                    │ callHandlers                           │                  
+                    │                                        │                  
+                    │   1734 │   │   │   for hdlr in c.handl │                  
+                    │   1735 │   │   │   │   found = found + │                  
+                    │   1736 │   │   │   │   if record.level │                  
+                    │ ❱ 1737 │   │   │   │   │   hdlr.handle │                  
+                    │   1738 │   │   │   if not c.propagate: │                  
+                    │   1739 │   │   │   │   c = None    #br │                  
+                    │   1740 │   │   │   else:               │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/logging/__init__.py:1027 in      │                  
+                    │ handle                                 │                  
+                    │                                        │                  
+                    │   1024 │   │   │   record = rv         │                  
+                    │   1025 │   │   if rv:                  │                  
+                    │   1026 │   │   │   with self.lock:     │                  
+                    │ ❱ 1027 │   │   │   │   self.emit(recor │                  
+                    │   1028 │   │   return rv               │                  
+                    │   1029 │                               │                  
+                    │   1030 │   def setFormatter(self, fmt) │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/site-packages/rich/logging.py:16 │                  
+                    │ 7 in emit                              │                  
+                    │                                        │                  
+                    │   164 │   │   │   │   │   record.ascti │                  
+                    │   165 │   │   │   │   message = format │                  
+                    │   166 │   │                            │                  
+                    │ ❱ 167 │   │   message_renderable = sel │                  
+                    │   168 │   │   log_renderable = self.re │                  
+                    │   169 │   │   │   record=record, trace │                  
+                    │   170 │   │   )                        │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/site-packages/rich/logging.py:19 │                  
+                    │ 3 in render_message                    │                  
+                    │                                        │                  
+                    │   190 │   │   │   ConsoleRenderable: R │                  
+                    │   191 │   │   """                      │                  
+                    │   192 │   │   use_markup = getattr(rec │                  
+                    │ ❱ 193 │   │   message_text = Text.from │                  
+                    │   194 │   │                            │                  
+                    │   195 │   │   highlighter = getattr(re │                  
+                    │   196 │   │   if highlighter:          │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/site-packages/rich/text.py:287   │                  
+                    │ in from_markup                         │                  
+                    │                                        │                  
+                    │    284 │   │   """                     │                  
+                    │    285 │   │   from .markup import ren │                  
+                    │    286 │   │                           │                  
+                    │ ❱  287 │   │   rendered_text = render( │                  
+                    │    288 │   │   rendered_text.justify = │                  
+                    │    289 │   │   rendered_text.overflow  │                  
+                    │    290 │   │   rendered_text.end = end │                  
+                    │                                        │                  
+                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
+                    │ n3.14/site-packages/rich/markup.py:167 │                  
+                    │  in render                             │                  
+                    │                                        │                  
+                    │   164 │   │   │   │   │   try:         │                  
+                    │   165 │   │   │   │   │   │   start, o │                  
+                    │   166 │   │   │   │   │   except KeyEr │                  
+                    │ ❱ 167 │   │   │   │   │   │   raise Ma │                  
+                    │   168 │   │   │   │   │   │   │   f"cl │                  
+                    │       match any open tag"              │                  
+                    │   169 │   │   │   │   │   │   ) from N │                  
+                    │   170 │   │   │   │   else:  # implici │                  
+                    ╰────────────────────────────────────────╯                  
+                    MarkupError: closing tag                                    
+                    '[/market/fear-greed]' at position 21                       
+                    doesn't match any open tag                                  
+[20:18:18] INFO     [MEME] Analysis triggered by:                    loop.py:207
+                    volatility(BONKUSD)                                         
+           INFO     [MEME] Invoking AI analysis...                   loop.py:210
+           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
+                    [MEME]...                                                   
+[20:18:22] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for top20                                         
+           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
+                    mock data for global_metrics                                
+Cycle 4 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
+2/10 | Win rate: 38% (3W/0L)
+[20:18:23] INFO     HTTP Request: POST                           _client.py:1025
+                    https://api.groq.com/openai/v1/chat/completi                
+                    ons "HTTP/1.1 401 Unauthorized"                             
+           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
+                    MOCK Hackathon decision to simulate trade.                  
+           INFO     AI raw output (290 chars)                    ai_brain.py:433
+           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
+                    trades=1                                                    
+╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
+│ Decision: ENTER                                                              │
+│ Confidence: 95%                                                              │
+│ Context: Mock context                                                        │
+│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
+│                                                                              │
+│ Trades:                                                                      │
+│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
+│     thesis: Mock trade for Hackathon demo                                    │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+                           Proposed Trades (MEME)                           
+┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
+┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
+└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
+           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
+                    of capital per trade                                        
+           INFO     [PAPER] BUY 5.6503 SOLUSD @ market        cli_wrapper.py:151
+           WARNING  CLI paper order failed, simulating:  position_manager.py:243
+                    CLI error (exit 2): Usage: kraken                           
+                    [OPTIONS] COMMAND [ARGS]...                                 
+                    Try 'kraken -h' for help.                                   
+                                                                                
+                    Error: No such command 'paper'.                             
+           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
+                    entry=84.4100 | stop=75.9690 |                              
+                    target=109.7330 | size=$476.94                              
+           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
+                    | thesis: Mock trade for Hackathon demo                     

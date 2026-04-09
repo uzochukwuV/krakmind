@@ -1,8 +1,78 @@
 {
-  "capital": 10000.0,
-  "deployed": 1715.0,
+  "capital": 10040.809244140226,
+  "deployed": 2814.6921954833037,
   "positions": {
-    "PF_SOLUSD_1775743698": {
+    "PF_SOLUSD_1775765869": {
+      "id": "PF_SOLUSD_1775765869",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 84.43,
+      "quantity": 5.648921462710656,
+      "position_value": 476.9384390966607,
+      "size_pct": 0.0475,
+      "stop_price": 75.98700000000001,
+      "target_price": 109.75900000000001,
+      "stop_loss_pct": 0.1,
+      "take_profit_pct": 0.3,
+      "thesis": "Mock trade for Hackathon demo",
+      "opened_at": "2026-04-09T20:17:49.594621",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": -0.113,
+      "unrealized_pnl_pct": -0.024,
+      "trailing_stage": 0,
+      "current_price": 84.41
+    },
+    "PF_SOLUSD_1775765883": {
+      "id": "PF_SOLUSD_1775765883",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 84.41,
+      "quantity": 5.650259911108408,
+      "position_value": 476.9384390966607,
+      "size_pct": 0.0475,
+      "stop_price": 75.969,
+      "target_price": 109.733,
+      "stop_loss_pct": 0.1,
+      "take_profit_pct": 0.3,
+      "thesis": "Mock trade for Hackathon demo",
+      "opened_at": "2026-04-09T20:18:03.530039",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "trailing_stage": 0,
+      "current_price": 84.41
+    },
+    "PF_SOLUSD_1775765903": {
+      "id": "PF_SOLUSD_1775765903",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 84.41,
+      "quantity": 5.650259911108408,
+      "position_value": 476.9384390966607,
+      "size_pct": 0.0475,
+      "stop_price": 75.969,
+      "target_price": 109.733,
+      "stop_loss_pct": 0.1,
+      "take_profit_pct": 0.3,
+      "thesis": "Mock trade for Hackathon demo",
+      "opened_at": "2026-04-09T20:18:23.904043",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "trailing_stage": 0
+    }
+  },
+  "closed_trades": [
+    {
       "id": "PF_SOLUSD_1775743698",
       "symbol": "PF_SOLUSD",
       "spot_pair": "SOLUSD",
@@ -11,7 +81,7 @@
       "quantity": 5.198140900195695,
       "position_value": 425.00000000000006,
       "size_pct": 0.0425,
-      "stop_price": 77.672,
+      "stop_price": 82.5776,
       "target_price": 85.84800000000001,
       "stop_loss_pct": 0.05,
       "take_profit_pct": 0.05,
@@ -20,12 +90,19 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 6.3937,
-      "unrealized_pnl_pct": 1.504,
-      "trailing_stage": 0,
-      "current_price": 82.99
+      "unrealized_pnl": 13.5152,
+      "unrealized_pnl_pct": 3.18,
+      "trailing_stage": 2,
+      "current_price": 84.36,
+      "exit_price": 84.36,
+      "pnl": 13.515166340508777,
+      "pnl_pct": 3.18,
+      "closed_at": "2026-04-09T20:14:30.575382",
+      "close_reason": "time_stop_4h",
+      "duration_minutes": 366,
+      "timestamp_logged": "2026-04-09T20:14:30.579227"
     },
-    "PF_SOLUSD_1775743712": {
+    {
       "id": "PF_SOLUSD_1775743712",
       "symbol": "PF_SOLUSD",
       "spot_pair": "SOLUSD",
@@ -34,7 +111,7 @@
       "quantity": 5.259295499021525,
       "position_value": 429.99999999999994,
       "size_pct": 0.043,
-      "stop_price": 77.672,
+      "stop_price": 82.5776,
       "target_price": 86.66560000000001,
       "stop_loss_pct": 0.05,
       "take_profit_pct": 0.06,
@@ -43,12 +120,19 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 6.4689,
-      "unrealized_pnl_pct": 1.504,
-      "trailing_stage": 0,
-      "current_price": 82.99
+      "unrealized_pnl": 13.6742,
+      "unrealized_pnl_pct": 3.18,
+      "trailing_stage": 2,
+      "current_price": 84.36,
+      "exit_price": 84.36,
+      "pnl": 13.674168297455935,
+      "pnl_pct": 3.18,
+      "closed_at": "2026-04-09T20:14:30.631287",
+      "close_reason": "time_stop_4h",
+      "duration_minutes": 365,
+      "timestamp_logged": "2026-04-09T20:14:30.631639"
     },
-    "PF_SOLUSD_1775743752": {
+    {
       "id": "PF_SOLUSD_1775743752",
       "symbol": "PF_SOLUSD",
       "spot_pair": "SOLUSD",
@@ -57,7 +141,7 @@
       "quantity": 5.258652317475846,
       "position_value": 429.99999999999994,
       "size_pct": 0.043,
-      "stop_price": 77.68149999999999,
+      "stop_price": 82.5877,
       "target_price": 87.4939,
       "stop_loss_pct": 0.05,
       "take_profit_pct": 0.07,
@@ -66,26 +150,34 @@
       "order_result": {
         "status": "simulated"
       },
-      "unrealized_pnl": 6.4156,
-      "unrealized_pnl_pct": 1.492,
-      "trailing_stage": 0,
-      "current_price": 82.99
+      "unrealized_pnl": 13.6199,
+      "unrealized_pnl_pct": 3.167,
+      "trailing_stage": 2,
+      "current_price": 84.36,
+      "exit_price": 84.36,
+      "pnl": 13.619909502262459,
+      "pnl_pct": 3.167,
+      "closed_at": "2026-04-09T20:14:30.683276",
+      "close_reason": "time_stop_4h",
+      "duration_minutes": 365,
+      "timestamp_logged": "2026-04-09T20:14:30.683621"
     }
-  },
-  "closed_trades": [],
+  ],
   "stats": {
-    "total_trades": 4,
-    "wins": 0,
+    "total_trades": 9,
+    "wins": 3,
     "losses": 0,
-    "total_pnl": 0.0,
-    "today_trades": 4,
-    "today_pnl": 0.0,
+    "total_pnl": 40.80924414022717,
+    "today_trades": 9,
+    "today_pnl": 40.80924414022717,
     "last_reset_date": "2026-04-09",
-    "day_start_capital": 10000.0
+    "day_start_capital": 10000.0,
+    "trailing_stop_activations": 3
   },
   "wallets": {
     "kraken": 10000.0,
-    "kraken_futures": 11715.0,
-    "kraken_spot": 8285.0
-  }
+    "kraken_futures": 12814.692195483303,
+    "kraken_spot": 7226.117048656923
+  },
+  "peak_capital": 10040.809244140226
 }

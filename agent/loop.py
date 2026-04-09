@@ -179,8 +179,8 @@ class TradingLoop:
         if time_since_last < self._min_decision_gap and not is_volatile:
             return
 
-        # If we have 3 open positions already, skip analysis
-        if summary["open_positions"] >= 3:
+        # If we have 10 open positions already, skip analysis
+        if summary["open_positions"] >= 10:
             return
 
         # Quick canary pre-check
@@ -343,7 +343,7 @@ class TradingLoop:
             f"[dim]Cycle {self._cycle}[/dim] | {mode_tag} | {window_tag} | "
             f"Capital: [bold]${summary['capital']:.2f}[/bold] | "
             f"Today P&L: [{pnl_color}]{summary['today_pnl']:+.2f}[/{pnl_color}] | "
-            f"Positions: {summary['open_positions']}/3 | "
+            f"Positions: {summary['open_positions']}/10 | "
             f"Win rate: {summary['win_rate_pct']:.0f}% ({summary['wins']}W/{summary['losses']}L)"
             f"{loss_limit_tag}"
         )
