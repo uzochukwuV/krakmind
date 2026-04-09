@@ -386,10 +386,8 @@ class AIBrain:
             except Exception as e:
                 err_msg = str(e)
                 if "401" in err_msg or "invalid" in err_msg.lower():
-                    logger.warning("API key invalid or expired (401) — Using MOCK Hackathon decision to simulate trade.")
-                    sym = "PEPEUSD" if "MEME" in messages[0]["content"] else "PF_SOLUSD"
-                    if "OPTIONS" in messages[0]["content"]: sym = "OPT_SOLUSD"
-                    return f'{{"decision":"ENTER","confidence":0.95,"reasoning":"MOCK Hackathon trade due to invalid API key","trades":[{{"symbol":"{sym}","direction":"long","stop_loss_pct":0.10,"take_profit_pct":0.30,"thesis":"Mock trade for Hackathon demo"}}],"market_context":"Mock context","next_check_minutes":15}}'
+                    logger.error("API key invalid or expired (401). Please provide a valid GROQ_API_KEY.")
+                    return '{"decision":"SKIP","confidence":0.0,"reasoning":"Invalid API Key","trades":[],"market_context":"","next_check_minutes":5}'
                 logger.warning(f"Model {model} failed: {err_msg[:100]} — trying next")
         
         logger.error("All models failed")

@@ -21,8 +21,8 @@ class Config:
     cmc_api_key: str = field(default_factory=lambda: os.getenv("CMC_API_KEY", ""))
     prism_api_key: str = field(default_factory=lambda: os.getenv("PRISM_API_KEY", ""))
 
-    # Mode
-    paper_mode: bool = field(default_factory=lambda: os.getenv("PAPER_MODE", "true").lower() == "true")
+    # Trading parameters
+    paper_mode: bool = field(default_factory=lambda: os.getenv("PAPER_MODE", "false").lower() == "true")
 
     # Timing
     loop_interval: int = field(default_factory=lambda: int(os.getenv("LOOP_INTERVAL_SECONDS", "15")))

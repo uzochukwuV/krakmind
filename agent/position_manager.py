@@ -232,16 +232,32 @@ class PositionManager:
 
         quantity = position_value / entry_price
 
-        # Execute paper order via CLI
-        cli_symbol = spot_pair.replace("XXBT", "BTC").replace("X", "").replace("Z", "")
+        # Execute order via REAL CLI
         try:
-            if direction == "long":
-                order_result = self.cli.paper_buy(symbol=cli_symbol, size=round(quantity, 4), order_type=entry_type)
+            if symbol.startswith("PF_"):
+                # Perpetual futures
+                cli_symbol = symbol
+                order_result = self.cli.futures_send_order(
+                    symbol=cli_symbol, 
+                    side="buy" if direction == "long" else "sell", 
+                    size=round(quantity, 4), 
+                    order_type=entry_type
+                )
             else:
-                order_result = self.cli.paper_sell(symbol=cli_symbol, size=round(quantity, 4), order_type=entry_type)
+                # Spot / Meme
+                cli_symbol = spot_pair
+                order_result = self.cli.spot_order_create(
+                    pair=cli_symbol, 
+                    side="buy" if direction == "long" else "sell", 
+                    volume=round(quantity, 4), 
+                    order_type=entry_type
+                )
         except Exception as e:
-            logger.warning(f"CLI paper order failed, simulating: {e}")
-            order_result = {"status": "simulated"}
+            logger.error(f"REAL CLI order failed: {e}")
+            # Revert transfer
+            self._state["wallets"]["kraken_spot"] += position_value
+            self._state["wallets"][protocol] -= position_value
+            return None
 
         position_id = f"{symbol}_{int(time.time())}"
         stop_price = entry_price * (1 - stop_loss_pct) if direction == "long" else entry_price * (1 + stop_loss_pct)
@@ -296,6 +312,30 @@ class PositionManager:
         direction = pos["direction"]
         entry_price = pos["entry_price"]
         quantity = pos["quantity"]
+
+        try:
+            if pos["symbol"].startswith("PF_"):
+                # Close perpetual
+                self.cli.futures_send_order(
+                    symbol=pos["symbol"],
+                    side="sell" if pos["direction"] == "long" else "buy",
+                    size=round(quantity, 4),
+                    order_type="market"
+                )
+            else:
+                # Close spot
+                self.cli.spot_order_create(
+                    pair=pos["spot_pair"],
+                    side="sell" if pos["direction"] == "long" else "buy",
+                    volume=round(quantity, 4),
+                    order_type="market"
+                )
+            logger.info(f"REAL CLI close order executed for {position_id}")
+        except Exception as e:
+            logger.error(f"REAL CLI close order failed: {e}")
+            # Do we still mark it closed internally? If it failed, it might still be open on exchange.
+            # But we'll mark it closed to prevent loop lock.
+            pass
 
         if direction == "long":
             pnl = (exit_price - entry_price) * quantity

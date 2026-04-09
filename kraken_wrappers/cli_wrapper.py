@@ -63,25 +63,39 @@ class KrakenCLI:
                 "Falling back to REST SDK for all calls."
             )
 
-    def _run(self, args: list, timeout: int = 15) -> dict:
+    def _run(self, args: list, auth: bool = False, timeout: int = 15) -> dict:
         """Execute a kraken CLI command and return parsed JSON."""
-        cmd = [KRAKEN_BIN] + args + ["-o", "json"]
+        cmd = [KRAKEN_BIN] + args
+        if auth:
+            api_key = os.getenv("KRAKEN_API_KEY", "")
+            secret_key = os.getenv("KRAKEN_SECRET_KEY", "")
+            if not api_key or not secret_key:
+                logger.error("Missing KRAKEN_API_KEY or KRAKEN_SECRET_KEY in environment.")
+                raise KrakenCLIError("Missing API credentials")
+            cmd += ["--api-key", api_key, "--secret-key", secret_key]
+            
+        # The new kraken CLI outputs single-quoted dicts or raw json depending on endpoint.
+        # We capture stdout and try to parse it.
         try:
+            logger.debug(f"Running: {' '.join(cmd).replace(os.getenv('KRAKEN_SECRET_KEY', 'xxx'), '***')}")
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=timeout
             )
             if result.returncode != 0:
                 err = result.stderr.strip()
-                # Parse enriched rate-limit errors from CLI
-                try:
-                    err_data = json.loads(err)
-                    if err_data.get("retryable"):
-                        logger.warning(f"Rate limited. Suggestion: {err_data.get('suggestion')}")
-                        raise RateLimitError(err_data.get("suggestion", ""))
-                except (json.JSONDecodeError, TypeError):
-                    pass
                 raise KrakenCLIError(f"CLI error (exit {result.returncode}): {err}")
-            return json.loads(result.stdout)
+            
+            out = result.stdout.strip()
+            # Try parsing as JSON
+            try:
+                return json.loads(out)
+            except json.JSONDecodeError:
+                # If it's a python dict literal (which kraken-cli v0.3.0 sometimes spits out)
+                import ast
+                try:
+                    return ast.literal_eval(out)
+                except:
+                    return {"result": out}
         except subprocess.TimeoutExpired:
             raise KrakenCLIError(f"CLI timeout after {timeout}s: {' '.join(cmd)}")
 
@@ -127,88 +141,55 @@ class KrakenCLI:
     # ── Authenticated account data ──────────────────────────────
 
     def get_balance(self) -> dict:
-        return self._run(["balance"])
+        return self._run(["spot", "/0/private/Balance", "-X", "POST"], auth=True)
 
-    def get_open_orders(self) -> dict:
-        return self._run(["open-orders"])
+    # ── Live Spot and Futures Orders (No Simulation) ────────────
 
-    def get_futures_open_positions(self) -> dict:
-        return self._run(["futures", "open-positions"])
-
-    def get_futures_account(self) -> dict:
-        return self._run(["futures", "account"])
-
-    # ── Paper trading ───────────────────────────────────────────
-
-    def paper_buy(self, symbol: str, size: float, order_type: str = "market",
-                  limit_price: Optional[float] = None) -> dict:
+    def spot_order_create(self, pair: str, side: str, volume: float, order_type: str = "market", limit_price: Optional[float] = None) -> dict:
         """
-        Place a paper buy order: kraken paper buy <PAIR> <VOLUME> [--type market|limit] [--price N]
+        Send a real spot order via Kraken CLI.
+        kraken spot /0/private/AddOrder -X POST -d '{"pair": "XBTUSD", "type": "buy", "ordertype": "market", "volume": "0.01"}'
         """
-        args = ["paper", "buy", symbol, str(size), "--type", order_type]
-        if order_type == "limit" and limit_price:
-            args += ["--price", str(limit_price)]
-        logger.info(f"[PAPER] BUY {size} {symbol} @ {'market' if not limit_price else limit_price}")
-        return self._run(args)
-
-    def paper_sell(self, symbol: str, size: float, order_type: str = "market",
-                   limit_price: Optional[float] = None) -> dict:
-        """
-        Place a paper sell order: kraken paper sell <PAIR> <VOLUME> [--type market|limit] [--price N]
-        """
-        args = ["paper", "sell", symbol, str(size), "--type", order_type]
-        if order_type == "limit" and limit_price:
-            args += ["--price", str(limit_price)]
-        logger.info(f"[PAPER] SELL {size} {symbol} @ {'market' if not limit_price else limit_price}")
-        return self._run(args)
-
-    def paper_reset(self) -> dict:
-        """Reset paper trading state."""
-        return self._run(["paper", "reset", "--yes"])
-
-    def paper_positions(self) -> dict:
-        """Get current paper positions."""
-        return self._run(["paper", "positions"])
-
-    def paper_balance(self) -> dict:
-        """Get paper account balance."""
-        return self._run(["paper", "balance"])
-
-    # ── Live futures (only used when paper_mode=False) ──────────
+        payload = {
+            "pair": pair,
+            "type": side.lower(),
+            "ordertype": order_type.lower(),
+            "volume": str(volume)
+        }
+        if limit_price:
+            payload["price"] = str(limit_price)
+            
+        args = ["spot", "/0/private/AddOrder", "-X", "POST", "-d", json.dumps(payload)]
+        logger.info(f"[LIVE SPOT] {side.upper()} {volume} {pair}")
+        return self._run(args, auth=True)
 
     def futures_send_order(self, symbol: str, side: str, size: float,
                            order_type: str = "market",
                            limit_price: Optional[float] = None,
                            stop_price: Optional[float] = None) -> dict:
         """
-        Send a live futures order.
-        WARNING: Uses real money. Only called when PAPER_MODE=false.
-        side: 'buy' | 'sell'
+        Send a real futures order via Kraken CLI.
+        kraken futures /derivatives/api/v3/sendorder -X POST -d '{"orderType": "mkt", "symbol": "PF_XBTUSD", "side": "buy", "size": 1}'
         """
-        if self.paper_mode:
-            logger.warning("futures_send_order called in paper mode — routing to paper_buy/sell")
-            if side == "buy":
-                return self.paper_buy(symbol, size, order_type, limit_price)
-            return self.paper_sell(symbol, size, order_type, limit_price)
-
-        args = [
-            "futures", "sendorder",
-            "--symbol", symbol,
-            "--side", side,
-            "--size", str(size),
-            "--orderType", order_type,
-        ]
+        payload = {
+            "orderType": "mkt" if order_type.lower() == "market" else "lmt",
+            "symbol": symbol,
+            "side": side.lower(),
+            "size": size
+        }
         if limit_price:
-            args += ["--limitPrice", str(limit_price)]
+            payload["limitPrice"] = limit_price
         if stop_price:
-            args += ["--stopPrice", str(stop_price)]
-        logger.warning(f"[LIVE] {side.upper()} {size} {symbol}")
-        return self._run(args)
+            payload["stopPrice"] = stop_price
+            payload["orderType"] = "stp"
+
+        args = ["futures", "/derivatives/api/v3/sendorder", "-X", "POST", "-d", json.dumps(payload)]
+        logger.warning(f"[LIVE FUTURES] {side.upper()} {size} {symbol}")
+        return self._run(args, auth=True)
 
     def futures_cancel_order(self, order_id: str) -> dict:
-        if self.paper_mode:
-            return self._run(["paper", "cancel", order_id])
-        return self._run(["futures", "cancelorder", "--orderId", order_id])
+        payload = {"order_id": order_id}
+        return self._run(["futures", "/derivatives/api/v3/cancelorder", "-X", "POST", "-d", json.dumps(payload)], auth=True)
 
 
 class KrakenCLIError(Exception):
