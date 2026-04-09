@@ -1,6 +1,6 @@
 # ArbMind dependencies
 python-kraken-sdk>=3.2.0       # Kraken REST + WebSocket SDK
-openai>=1.0.0                  # OpenRouter (OpenAI-compatible API)
+openai>=1.0.0                  # Groq/OpenRouter (OpenAI-compatible API)
 requests>=2.31.0               # CoinMarketCap API calls
 pandas>=2.0.0                  # Correlation matrix, OHLC analysis
 numpy>=1.24.0                  # Numerical ops
@@ -8,3 +8,5 @@ python-dotenv>=1.0.0           # Environment config
 rich>=13.0.0                   # Beautiful terminal output
 aiohttp>=3.9.0                 # Async HTTP for CMC
 pytz>=2024.1                   # Timezone handling
+fastapi>=0.100.0               # Dashboard API
+uvicorn>=0.23.0                # ASGI server for FastAPI
