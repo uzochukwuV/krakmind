@@ -1,16 +1,90 @@
 {
   "capital": 10000.0,
-  "deployed": 0.0,
-  "positions": {},
+  "deployed": 1715.0,
+  "positions": {
+    "PF_SOLUSD_1775743698": {
+      "id": "PF_SOLUSD_1775743698",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 81.76,
+      "quantity": 5.198140900195695,
+      "position_value": 425.00000000000006,
+      "size_pct": 0.0425,
+      "stop_price": 77.672,
+      "target_price": 85.84800000000001,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.05,
+      "thesis": "SOL corr=0.68, RSI=35.7 (near oversold), dip=-0.54%, vol_spike=false",
+      "opened_at": "2026-04-09T14:08:18.941624",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": 0.052,
+      "unrealized_pnl_pct": 0.012,
+      "trailing_stage": 0,
+      "current_price": 81.77
+    },
+    "PF_SOLUSD_1775743712": {
+      "id": "PF_SOLUSD_1775743712",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 81.76,
+      "quantity": 5.259295499021525,
+      "position_value": 429.99999999999994,
+      "size_pct": 0.043,
+      "stop_price": 77.672,
+      "target_price": 86.66560000000001,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.06,
+      "thesis": "SOL corr=0.68, RSI=35.7 (near oversold), vol_spike=false, dipped -0.54%",
+      "opened_at": "2026-04-09T14:08:32.754066",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": 0.0526,
+      "unrealized_pnl_pct": 0.012,
+      "trailing_stage": 0,
+      "current_price": 81.77
+    },
+    "PF_SOLUSD_1775743752": {
+      "id": "PF_SOLUSD_1775743752",
+      "symbol": "PF_SOLUSD",
+      "spot_pair": "SOLUSD",
+      "direction": "long",
+      "entry_price": 81.77,
+      "quantity": 5.258652317475846,
+      "position_value": 429.99999999999994,
+      "size_pct": 0.043,
+      "stop_price": 77.68149999999999,
+      "target_price": 87.4939,
+      "stop_loss_pct": 0.05,
+      "take_profit_pct": 0.07,
+      "thesis": "SOL corr=0.68, RSI=35.7 (near oversold), vol_spike=false, dipped -0.54%",
+      "opened_at": "2026-04-09T14:09:12.788288",
+      "order_result": {
+        "status": "simulated"
+      },
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "trailing_stage": 0
+    }
+  },
   "closed_trades": [],
   "stats": {
-    "total_trades": 0,
+    "total_trades": 4,
     "wins": 0,
     "losses": 0,
     "total_pnl": 0.0,
-    "today_trades": 0,
+    "today_trades": 4,
     "today_pnl": 0.0,
     "last_reset_date": "2026-04-09",
     "day_start_capital": 10000.0
+  },
+  "wallets": {
+    "kraken": 10000.0,
+    "kraken_futures": 11715.0,
+    "kraken_spot": 8285.0
   }
 }
