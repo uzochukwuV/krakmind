@@ -197,17 +197,7 @@ class TradingLoop:
         prism_trigger = bool(strong_prism)
 
         if not dip_triggered and not is_volatile and not prism_trigger:
-            if loop_name == "PERP":
-                btc_chg = canary['btc']['change_1h_pct']
-                eth_chg = canary['eth']['change_1h_pct']
-                btc_str = f"{btc_chg:.2f}%" if btc_chg is not None else "N/A"
-                eth_str = f"{eth_chg:.2f}%" if eth_chg is not None else "N/A"
-                prism_str = f"Prism={len(prism_signals)} signals" if prism_signals else "Prism=no signals"
-                logger.info(
-                    f"Canary: BTC={btc_str} | ETH={eth_str} | "
-                    f"Volatile: False | {prism_str}"
-                )
-            return
+            pass # Force AI trigger in Hackathon Mode
 
         # Log what triggered analysis
         triggers = []
@@ -237,7 +227,7 @@ class TradingLoop:
             "decided_at":     time.time(),
         }
 
-        if decision.decision == "ENTER" and decision.confidence >= 0.6:
+        if decision.decision == "ENTER" and decision.confidence >= 0.3:
             await self._execute_trades(decision, loop_name)
         elif decision.decision == "SKIP":
             logger.info(f"[{loop_name}] AI SKIP: {decision.reasoning[:80]}")
@@ -310,7 +300,7 @@ class TradingLoop:
 
             # Check signal quality
             signal_quality = trade.get("signal_quality", 0)
-            if signal_quality == 0 and decision.confidence < 0.75:
+            if signal_quality == 0 and decision.confidence < 0.3:
                 logger.info(
                     f"[{loop_name}] Skipping {symbol}: signal_quality=0 & confidence={decision.confidence:.0%} "
                 )

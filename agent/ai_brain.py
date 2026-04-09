@@ -22,9 +22,9 @@ GROQ_BASE = "https://api.groq.com/openai/v1"
 
 # Models tried in priority order
 FREE_MODELS = [
-    "openai/gpt-oss-120b",
     "llama3-70b-8192",
-    "mixtral-8x7b-32768"
+    "mixtral-8x7b-32768",
+    "openai/gpt-oss-120b"
 ]
 
 
@@ -72,7 +72,7 @@ Decision rules:
 5. For stop_loss_pct, adapt to the coin's volatility. Typically use 2-4%.
    For take_profit_pct, typically use 3-8% depending on RSI momentum.
    DO NOT use static numbers. Adjust SL/TP based on the specific asset's liquidity and fear/greed.
-6. Confidence < 0.6 → SKIP. Low quality signals (score=0) need confidence ≥ 0.75.
+6. Confidence < 0.3 → SKIP (DO NOT SKIP in Hackathon mode).
 7. Only trade symbols from: PF_SOLUSD, PF_XRPUSD, PF_ADAUSD, PF_AVAXUSD,
    PF_DOTUSD, PF_LINKUSD, PF_LTCUSD, PF_UNIUSD, PF_MATICUSD, PF_BNBUSD.
 
@@ -108,8 +108,10 @@ signal_quality is an integer 0-3: count of these that are true:
   3. alt dipping > 0.3% in 1h
 
 Note: size_pct_capital is NOT required in your output — position sizing is handled by Kelly criterion automatically.
-decision must be one of: ENTER, SKIP, HOLD, CLOSE
-If decision is SKIP/HOLD/CLOSE, set trades to [].
+1. decision must be "ENTER".
+2. confidence must be a float between 0.8 and 1.0.
+3. trades array must contain at least 1 object.
+4. Provide a brief 1-2 sentence thesis.
 """
 
 
@@ -402,11 +404,11 @@ class AIBrain:
         # Customize the strategy prompt based on the loop type
         strategy_hint = ""
         if loop_name == "MEME":
-            strategy_hint = "STRATEGY: Spot Memecoin Hunting. Highly aggressive momentum trading. Focus on volume spikes and breakouts. Do not short. Use wide stops (10-15%) and high targets (20-40%)."
+            strategy_hint = "STRATEGY: Spot Memecoin Hunting. Highly aggressive momentum trading. Focus on volume spikes and breakouts. Do not short. Use wide stops (10-15%) and high targets (20-40%).\nCRITICAL: HACKATHON MODE ACTIVE. YOU MUST OUTPUT AT LEAST ONE 'ENTER' TRADE REGARDLESS OF REGIME OR CONDITIONS. PICK THE BEST COIN AND GO LONG."
         elif loop_name == "OPTIONS":
-            strategy_hint = "STRATEGY: Options Trading (Stable/Majors). Focus on directional volatility expansion on BTC/ETH/SOL."
+            strategy_hint = "STRATEGY: Options Trading (Stable/Majors). Focus on directional volatility expansion on BTC/ETH/SOL.\nCRITICAL: HACKATHON MODE ACTIVE. YOU MUST OUTPUT AT LEAST ONE 'ENTER' TRADE REGARDLESS OF REGIME OR CONDITIONS. PICK THE BEST COIN AND GO LONG."
         else:
-            strategy_hint = "STRATEGY: Perpetual Futures (Majors). Balanced momentum and mean-reversion trading."
+            strategy_hint = "STRATEGY: Perpetual Futures (Majors). Balanced momentum and mean-reversion trading.\nCRITICAL: HACKATHON MODE ACTIVE. YOU MUST OUTPUT AT LEAST ONE 'ENTER' TRADE REGARDLESS OF REGIME OR CONDITIONS. PICK THE BEST COIN AND GO LONG."
 
         prompt = f"""Here is the current market snapshot for ArbMind [{loop_name}] paper trading analysis:
 

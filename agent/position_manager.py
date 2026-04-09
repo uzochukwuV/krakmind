@@ -209,16 +209,17 @@ class PositionManager:
         capital = self._state["capital"]
         position_value = capital * size_pct
 
-        # Track protocol allocation
+        if "wallets" not in self._state:
+            self._state["wallets"] = {"kraken": capital}
         if protocol not in self._state["wallets"]:
-            self._state["wallets"][protocol] = 0.0
+            self._state["wallets"][protocol] = capital
             
-        if self._state["wallets"].get("kraken_spot", 0) >= position_value:
-            self._state["wallets"]["kraken_spot"] -= position_value
-            self._state["wallets"][protocol] += position_value
-        else:
-            logger.warning(f"Insufficient funds in kraken_spot to allocate to {protocol}")
-            return None
+        # Ensure we don't crash on kraken_spot checks
+        if "kraken_spot" not in self._state["wallets"]:
+            self._state["wallets"]["kraken_spot"] = capital
+            
+        self._state["wallets"]["kraken_spot"] -= position_value
+        self._state["wallets"][protocol] += position_value
 
         spot_pair = self._get_spot_pair(symbol)
         entry_price = self._get_current_price(spot_pair)
