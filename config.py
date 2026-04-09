@@ -49,46 +49,32 @@ class Config:
         "PF_ETHUSD": "XETHZUSD",
     })
 
-    # Tradeable alts on Kraken Futures (excludes BTC/ETH canaries)
-    tradeable_alts: list = field(default_factory=lambda: [
-        # Existing core alts
-        "PF_SOLUSD",    # Solana
-        "PF_BNBUSD",    # BNB
-        "PF_XRPUSD",    # XRP
-        "PF_ADAUSD",    # Cardano
-        "PF_AVAXUSD",   # Avalanche
-        "PF_DOTUSD",    # Polkadot
-        "PF_MATICUSD",  # Polygon
-        "PF_LINKUSD",   # Chainlink
-        "PF_LTCUSD",    # Litecoin
-        "PF_UNIUSD",    # Uniswap
-        # User-requested expansions (all confirmed on Kraken Futures)
-        "PF_DOGEUSD",   # Dogecoin
-        "PF_XLMUSD",    # Stellar
-        "PF_TONUSD",    # Toncoin
-        "PF_FLOWUSD",   # Flow
-        "PF_ASTERUSD",  # Aster Network
-        "PF_KAVAUSD",   # Kava
-        "PF_ARCUSD",    # Arc
-        "PF_GMXUSD",    # GMX
-        # Bonus high-liquidity alts
-        "PF_ATOMUSD",   # Cosmos
-        "PF_NEARUSD",   # NEAR Protocol
+    # Instruments for 3 distinct loops
+    # 1. Perpetuals (Stable/Major Coins)
+    perp_alts: list = field(default_factory=lambda: [
+        "PF_XBTUSD", "PF_ETHUSD", "PF_SOLUSD", "PF_XRPUSD", "PF_ADAUSD", "PF_AVAXUSD", "PF_LINKUSD"
+    ])
+    
+    # 2. Options (Stable/Major Coins)
+    # Note: Kraken options tickers are typically formatted differently, using placeholders for architecture
+    options_alts: list = field(default_factory=lambda: [
+        "OPT_BTCUSD", "OPT_ETHUSD", "OPT_SOLUSD"
     ])
 
-    # CMC slugs for market data (aligned with tradeable_alts + canaries)
+    # 3. Spot Memecoins (High Volatility Hunting)
+    spot_memecoins: list = field(default_factory=lambda: [
+        "PEPEUSD", "WIFUSD", "BONKUSD", "DOGEUSD", "SHIBUSD", "FLOKIUSD"
+    ])
+
+    # Legacy tradeable_alts (combined for backwards compatibility in signals.py)
+    @property
+    def tradeable_alts(self) -> list:
+        return self.perp_alts + self.options_alts + self.spot_memecoins
+
+    # CMC slugs for market data
     cmc_slugs: list = field(default_factory=lambda: [
-        "bitcoin", "ethereum", "solana", "bnb", "xrp",
-        "cardano", "avalanche-2", "polkadot", "matic-network",
-        "chainlink", "litecoin", "uniswap", "cosmos",
-        "near", "stellar", "dogecoin", "toncoin",
-        "flow", "kava", "gmx",
-    ])
-
-    # DIP windows in UTC+1 (hour_start, min_start, hour_end, min_end)
-    dip_windows_utc1: list = field(default_factory=lambda: [
-        (5, 30, 6, 30),   # 6AM UTC+1 window
-        (15, 0, 16, 30),  # 4PM UTC+1 window
+        "bitcoin", "ethereum", "solana", "xrp", "cardano", "avalanche-2", "chainlink",
+        "pepe", "dogwifhat", "bonk", "dogecoin", "shiba-inu", "floki"
     ])
 
 

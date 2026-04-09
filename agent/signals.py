@@ -287,15 +287,42 @@ class SignalEngine:
     # ── Correlation matrix ──────────────────────────────────────
 
     ALT_SPOT_PAIRS = {
-        "PF_SOLUSD":   "SOLUSD",
-        "PF_XRPUSD":   "XXRPZUSD",
-        "PF_ADAUSD":   "ADAUSD",
-        "PF_AVAXUSD":  "AVAXUSD",
-        "PF_DOTUSD":   "DOTUSD",
-        "PF_LTCUSD":   "XLTCZUSD",
-        "PF_LINKUSD":  "LINKUSD",
-        "PF_UNIUSD":   "UNIUSD",
+        # Perpetuals
+        "PF_SOLUSD": "SOLUSD",
+        "PF_BNBUSD": "BNBUSD",
+        "PF_XRPUSD": "XRPUSD",
+        "PF_ADAUSD": "ADAUSD",
+        "PF_AVAXUSD": "AVAXUSD",
+        "PF_DOTUSD": "DOTUSD",
         "PF_MATICUSD": "MATICUSD",
+        "PF_LINKUSD": "LINKUSD",
+        "PF_LTCUSD": "LTCUSD",
+        "PF_UNIUSD": "UNIUSD",
+        "PF_DOGEUSD": "DOGEUSD",
+        "PF_XLMUSD": "XLMUSD",
+        "PF_TONUSD": "TONUSD",
+        "PF_FLOWUSD": "FLOWUSD",
+        "PF_ASTERUSD": "ASTERUSD",
+        "PF_KAVAUSD": "KAVAUSD",
+        "PF_ARCUSD": "ARCUSD",
+        "PF_GMXUSD": "GMXUSD",
+        "PF_ATOMUSD": "ATOMUSD",
+        "PF_NEARUSD": "NEARUSD",
+        "PF_XBTUSD": "XXBTZUSD",
+        "PF_ETHUSD": "XETHZUSD",
+        
+        # Options (using underlying spot)
+        "OPT_BTCUSD": "XXBTZUSD",
+        "OPT_ETHUSD": "XETHZUSD",
+        "OPT_SOLUSD": "SOLUSD",
+        
+        # Spot Memecoins
+        "PEPEUSD": "PEPEUSD",
+        "WIFUSD": "WIFUSD",
+        "BONKUSD": "BONKUSD",
+        "DOGEUSD": "DOGEUSD",
+        "SHIBUSD": "SHIBUSD",
+        "FLOKIUSD": "FLOKIUSD"
     }
 
     def compute_correlation_matrix(self, interval: int = 15, lookback_candles: int = 48) -> pd.DataFrame:
@@ -389,6 +416,34 @@ class SignalEngine:
         candidates.sort(key=lambda x: (x["signal_quality"], x["correlation"]), reverse=True)
         return candidates
 
+    # ── Volatility Triggers ────────────────────────────────────────
+
+    def check_market_volatility(self, symbols: list = None) -> tuple[bool, list[str]]:
+        """
+        Scans provided symbols. Returns True if ANY coin exhibits 
+        high volatility (volume spike, oversold RSI, or deep dip).
+        """
+        triggers = []
+        is_volatile = False
+        
+        candidates = self.get_high_correlation_alts(min_corr=0.0) # Check all regardless of correlation
+        if not candidates:
+            return False, []
+
+        for cand in candidates:
+            if symbols and cand['symbol'] not in symbols:
+                continue
+                
+            if cand.get("signal_quality", 0) >= 1:
+                is_volatile = True
+                reasons = []
+                if cand.get("dipping"): reasons.append("dip")
+                if cand.get("rsi_oversold"): reasons.append("oversold_rsi")
+                if cand.get("volume_spike"): reasons.append("vol_spike")
+                triggers.append(f"{cand['symbol']} ({'+'.join(reasons)})")
+                
+        return is_volatile, triggers
+
     # ── Full signal snapshot ────────────────────────────────────
 
     def get_full_signal_snapshot(self) -> dict:
@@ -419,3 +474,22 @@ class SignalEngine:
             snapshot["correlation_candidates"] = []
 
         return snapshot
+
+    def check_market_volatility(self, symbols: list = None) -> tuple[bool, list[str]]:
+        """
+        Scans provided symbols. Returns True if ANY coin exhibits 
+        high volatility (volume spike, oversold RSI, or deep dip).
+        """
+        triggers = []
+        is_volatile = False
+        
+        candidates = self.get_high_correlation_alts(min_corr=0.0) # Check all regardless of correlation
+        for cand in candidates:
+            if symbols and cand['symbol'] not in symbols:
+                continue
+                
+            if cand.get("signal_quality", 0) >= 1:
+                is_volatile = True
+                triggers.append(cand['symbol'])
+                
+        return is_volatile, triggers

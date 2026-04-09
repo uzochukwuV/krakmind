@@ -124,7 +124,7 @@ class ContextBuilder:
         self.cmc = cmc_client
         self.positions = position_manager
 
-    def build(self) -> str:
+    def build(self, symbols: list = None) -> str:
         sections = []
 
         # 1. Time window & canary
@@ -171,6 +171,8 @@ class ContextBuilder:
         # 3. Correlation candidates
         try:
             candidates = self.signals.get_high_correlation_alts()
+            if symbols:
+                candidates = [c for c in candidates if c['symbol'] in symbols]
             if candidates:
                 rows = "\n".join(
                     f"  - {c['symbol']}: corr={self._fmt(c.get('correlation'))}, "
@@ -394,12 +396,26 @@ class AIBrain:
         logger.error("All OpenRouter models failed")
         return None
 
-    def analyze_and_decide(self) -> "TradeDecision":
-        """Main entry: build full context, ask AI, return TradeDecision."""
-        logger.info(f"AI analysis started ({self.model})...")
+    def analyze_and_decide(self, loop_name: str, symbols: list = None) -> "TradeDecision":
+        """Main entry: build full context, ask AI, return TradeDecision.
+        If `symbols` is provided, filters the candidate correlations.
+        """
+        logger.info(f"AI analysis started ({self.model}) for [{loop_name}]...")
 
-        context = self.context_builder.build()
-        prompt = f"""Here is the current market snapshot for ArbMind paper trading analysis:
+        context = self.context_builder.build(symbols=symbols)
+        
+        # Customize the strategy prompt based on the loop type
+        strategy_hint = ""
+        if loop_name == "MEME":
+            strategy_hint = "STRATEGY: Spot Memecoin Hunting. Highly aggressive momentum trading. Focus on volume spikes and breakouts. Do not short. Use wide stops (10-15%) and high targets (20-40%)."
+        elif loop_name == "OPTIONS":
+            strategy_hint = "STRATEGY: Options Trading (Stable/Majors). Focus on directional volatility expansion on BTC/ETH/SOL."
+        else:
+            strategy_hint = "STRATEGY: Perpetual Futures (Majors). Balanced momentum and mean-reversion trading."
+
+        prompt = f"""Here is the current market snapshot for ArbMind [{loop_name}] paper trading analysis:
+
+{strategy_hint}
 
 {context}
 

@@ -129,7 +129,8 @@ class PrismSignalEngine:
             self._print_prism_status(snapshot, signals)
 
         except Exception as e:
-            logger.error(f"Prism poll #{self._cycle} failed: {e}", exc_info=True)
+            safe_e = str(e).replace("[", "(").replace("]", ")")
+            logger.error(f"Prism poll #{self._cycle} failed: {safe_e}", exc_info=True)
 
     def _is_hot_period(self) -> bool:
         """Use fast polling when there are active signals or open positions."""

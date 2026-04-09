@@ -509,17 +509,17 @@ class PositionManager:
         # Original alts
         "PF_SOLUSD":   "SOLUSD",
         "PF_BNBUSD":   "BNBUSD",
-        "PF_XRPUSD":   "XXRPZUSD",
+        "PF_XRPUSD":   "XRPUSD",
         "PF_ADAUSD":   "ADAUSD",
         "PF_AVAXUSD":  "AVAXUSD",
         "PF_DOTUSD":   "DOTUSD",
         "PF_MATICUSD": "MATICUSD",
         "PF_LINKUSD":  "LINKUSD",
-        "PF_LTCUSD":   "XLTCZUSD",
+        "PF_LTCUSD":   "LTCUSD",
         "PF_UNIUSD":   "UNIUSD",
         # Expanded alts
-        "PF_DOGEUSD":  "XDGEZUSD",
-        "PF_XLMUSD":   "XXLMZUSD",
+        "PF_DOGEUSD":  "DOGEUSD",
+        "PF_XLMUSD":   "XLMUSD",
         "PF_TONUSD":   "TONUSD",
         "PF_FLOWUSD":  "FLOWUSD",
         "PF_ASTERUSD": "ASTERUSD",
@@ -528,6 +528,15 @@ class PositionManager:
         "PF_GMXUSD":   "GMXUSD",
         "PF_ATOMUSD":  "ATOMUSD",
         "PF_NEARUSD":  "NEARUSD",
+        "OPT_BTCUSD": "XXBTZUSD",
+        "OPT_ETHUSD": "XETHZUSD",
+        "OPT_SOLUSD": "SOLUSD",
+        "PEPEUSD": "PEPEUSD",
+        "WIFUSD": "WIFUSD",
+        "BONKUSD": "BONKUSD",
+        "DOGEUSD": "DOGEUSD",
+        "SHIBUSD": "SHIBUSD",
+        "FLOKIUSD": "FLOKIUSD"
     }
 
     def _get_spot_pair(self, futures_symbol: str) -> str:
