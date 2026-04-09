@@ -1,4 +1,4 @@
-[20:17:16] INFO     ================================================= main.py:27
+[20:41:50] INFO     ================================================= main.py:27
                     ===========                                                 
            INFO       ArbMind Trading Agent — PAPER MODE              main.py:28
            INFO       AI-first | Kraken Futures | Top-20 CMC          main.py:29
@@ -8,7 +8,7 @@
            INFO     Dashboard API running on port 8000                main.py:34
            INFO     Initialising ArbMind components (Perp, Options,   loop.py:34
                     Meme Spot)...                                               
-           INFO     Kraken CLI found: 3.2.7                    cli_wrapper.py:58
+[20:41:51] INFO     Kraken CLI found: 3.2.7                    cli_wrapper.py:58
                     (/root/.pyenv/versions/3.14.3/bin/kraken)                   
            INFO     AI Brain initialised: llama3-70b-8192 via    ai_brain.py:363
                     Groq                                                        
@@ -19,435 +19,452 @@
            INFO     Prism Signal Engine: enabled (polling every 5m)   loop.py:56
            INFO     Starting 3 independent trading loops (Perp,       loop.py:71
                     Options, Meme) + position monitor...                        
-Cycle 1 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
-0/10 | Win rate: 75% (3W/0L)
-[20:17:45] INFO     [PERP] Analysis triggered by:                    loop.py:207
-           INFO     [PERP] Invoking AI analysis...                   loop.py:210
-           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
-                    [PERP]...                                                   
-[20:17:46] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for top20                                         
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for global_metrics                                
-           INFO     [OPTIONS] Analysis triggered by:                 loop.py:207
-           INFO     [OPTIONS] Invoking AI analysis...                loop.py:210
-           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
-                    [OPTIONS]...                                                
-[20:17:47] INFO     [MEME] Analysis triggered by:                    loop.py:207
-                    volatility(BONKUSD)                                         
-           INFO     [MEME] Invoking AI analysis...                   loop.py:210
-           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
-                    [MEME]...                                                   
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for top20                                         
-           INFO     Prism Signal Engine starting...            prism_loop.py:108
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for global_metrics                                
-           INFO     Fetching Prism signal snapshot...        prism_client.py:249
-[20:17:48] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for top20                                         
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for global_metrics                                
-           INFO     HTTP Request: POST                           _client.py:1025
-                    https://api.groq.com/openai/v1/chat/completi                
-                    ons "HTTP/1.1 401 Unauthorized"                             
-           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
-                    MOCK Hackathon decision to simulate trade.                  
-           INFO     AI raw output (290 chars)                    ai_brain.py:433
-           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
-                    trades=1                                                    
-╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
-│ Decision: ENTER                                                              │
-│ Confidence: 95%                                                              │
-│ Context: Mock context                                                        │
-│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
-│                                                                              │
-│ Trades:                                                                      │
-│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
-│     thesis: Mock trade for Hackathon demo                                    │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-                           Proposed Trades (MEME)                           
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
-└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
-           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
-                    of capital per trade                                        
-           INFO     HTTP Request: POST                           _client.py:1025
-                    https://api.groq.com/openai/v1/chat/completi                
-                    ons "HTTP/1.1 401 Unauthorized"                             
-           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
-                    MOCK Hackathon decision to simulate trade.                  
-           INFO     AI raw output (290 chars)                    ai_brain.py:433
-           INFO     HTTP Request: POST                           _client.py:1025
-                    https://api.groq.com/openai/v1/chat/completi                
-                    ons "HTTP/1.1 401 Unauthorized"                             
-           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
-                    trades=1                                                    
-           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
-                    MOCK Hackathon decision to simulate trade.                  
-           INFO     AI raw output (290 chars)                    ai_brain.py:433
-           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
-                    trades=1                                                    
-[20:17:49] INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
-           WARNING  CLI paper order failed, simulating:  position_manager.py:243
-                    CLI error (exit 2): Usage: kraken                           
-                    [OPTIONS] COMMAND [ARGS]...                                 
-                    Try 'kraken -h' for help.                                   
-                                                                                
-                    Error: No such command 'paper'.                             
-           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
-                    entry=84.4300 | stop=75.9870 |                              
-                    target=109.7590 | size=$476.94                              
-           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
-                    | thesis: Mock trade for Hackathon demo                     
-╭─────────────────────────── AI Analysis [OPTIONS] ────────────────────────────╮
-│ Decision: ENTER                                                              │
-│ Confidence: 95%                                                              │
-│ Context: Mock context                                                        │
-│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
-│                                                                              │
-│ Trades:                                                                      │
-│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
-│     thesis: Mock trade for Hackathon demo                                    │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-                         Proposed Trades (OPTIONS)                          
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
-└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
-           INFO     [OPTIONS] Kelly sizing: confidence=95% →         loop.py:286
-                    size=4.75% of capital per trade                             
-           INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
-           WARNING  CLI paper order failed, simulating:  position_manager.py:243
-                    CLI error (exit 2): Usage: kraken                           
-                    [OPTIONS] COMMAND [ARGS]...                                 
-                    Try 'kraken -h' for help.                                   
-                                                                                
-                    Error: No such command 'paper'.                             
-           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
-                    entry=84.4300 | stop=75.9870 |                              
-                    target=109.7590 | size=$476.94                              
-           INFO     [OPTIONS] Position opened: PF_SOLUSD |           loop.py:320
-                    kelly=4.75% | thesis: Mock trade for Hackathon              
-                    demo                                                        
-╭───────────────────────────── AI Analysis [PERP] ─────────────────────────────╮
-│ Decision: ENTER                                                              │
-│ Confidence: 95%                                                              │
-│ Context: Mock context                                                        │
-│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
-│                                                                              │
-│ Trades:                                                                      │
-│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
-│     thesis: Mock trade for Hackathon demo                                    │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-                           Proposed Trades (PERP)                           
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
-└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
-           INFO     [PERP] Kelly sizing: confidence=95% → size=4.75% loop.py:286
-                    of capital per trade                                        
-           INFO     [PAPER] BUY 5.6489 SOLUSD @ market        cli_wrapper.py:151
-           WARNING  CLI paper order failed, simulating:  position_manager.py:243
-                    CLI error (exit 2): Usage: kraken                           
-                    [OPTIONS] COMMAND [ARGS]...                                 
-                    Try 'kraken -h' for help.                                   
-                                                                                
-                    Error: No such command 'paper'.                             
-           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
-                    entry=84.4300 | stop=75.9870 |                              
-                    target=109.7590 | size=$476.94                              
-           INFO     [PERP] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
-                    | thesis: Mock trade for Hackathon demo                     
-Cycle 2 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
-1/10 | Win rate: 43% (3W/0L)
-[20:18:02] INFO     [MEME] Analysis triggered by:                    loop.py:207
-                    volatility(BONKUSD)                                         
-           INFO     [MEME] Invoking AI analysis...                   loop.py:210
-           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
-                    [MEME]...                                                   
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for top20                                         
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for global_metrics                                
-[20:18:03] INFO     HTTP Request: POST                           _client.py:1025
-                    https://api.groq.com/openai/v1/chat/completi                
-                    ons "HTTP/1.1 401 Unauthorized"                             
-           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
-                    MOCK Hackathon decision to simulate trade.                  
-           INFO     AI raw output (290 chars)                    ai_brain.py:433
-           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
-                    trades=1                                                    
-╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
-│ Decision: ENTER                                                              │
-│ Confidence: 95%                                                              │
-│ Context: Mock context                                                        │
-│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
-│                                                                              │
-│ Trades:                                                                      │
-│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
-│     thesis: Mock trade for Hackathon demo                                    │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-                           Proposed Trades (MEME)                           
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
-└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
-           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
-                    of capital per trade                                        
-           INFO     [PAPER] BUY 5.6503 SOLUSD @ market        cli_wrapper.py:151
-           WARNING  CLI paper order failed, simulating:  position_manager.py:243
-                    CLI error (exit 2): Usage: kraken                           
-                    [OPTIONS] COMMAND [ARGS]...                                 
-                    Try 'kraken -h' for help.                                   
-                                                                                
-                    Error: No such command 'paper'.                             
-           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
-                    entry=84.4100 | stop=75.9690 |                              
-                    target=109.7330 | size=$476.94                              
-           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
-                    | thesis: Mock trade for Hackathon demo                     
-Cycle 3 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
-2/10 | Win rate: 38% (3W/0L)
-[20:18:15] ERROR    Prism poll #1 failed: closing tag          prism_loop.py:133
-                    '(/market/fear-greed)' at position 21                       
-                    doesn't match any open tag                                  
-                    ╭── Traceback (most recent call last) ───╮                  
-                    │ /workspace/agent/prism_loop.py:123 in  │                  
-                    │ _poll                                  │                  
-                    │                                        │                  
-                    │   120 │   │   self._cycle += 1         │                  
-                    │   121 │   │   try:                     │                  
-                    │   122 │   │   │   # Run blocking HTTP  │                  
-                    │ ❱ 123 │   │   │   snapshot = await asy │                  
-                    │   124 │   │   │   │   None, self.clien │                  
-                    │   125 │   │   │   )                    │                  
-                    │   126 │   │   │   signals = self._clas │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/concurrent/futures/thread.py:86  │                  
-                    │ in run                                 │                  
-                    │                                        │                  
-                    │    83 │   │   │   return               │                  
-                    │    84 │   │                            │                  
-                    │    85 │   │   try:                     │                  
-                    │ ❱  86 │   │   │   result = ctx.run(sel │                  
-                    │    87 │   │   except BaseException as  │                  
-                    │    88 │   │   │   self.future.set_exce │                  
-                    │    89 │   │   │   # Break a reference  │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/concurrent/futures/thread.py:73  │                  
-                    │ in run                                 │                  
-                    │                                        │                  
-                    │    70 │                                │                  
-                    │    71 │   def run(self, task):         │                  
-                    │    72 │   │   fn, args, kwargs = task  │                  
-                    │ ❱  73 │   │   return fn(*args, **kwarg │                  
-                    │    74                                  │                  
-                    │    75                                  │                  
-                    │    76 class _WorkItem:                 │                  
-                    │                                        │                  
-                    │ /workspace/data/prism_client.py:256 in │                  
-                    │ get_signal_snapshot                    │                  
-                    │                                        │                  
-                    │   253 │   │                            │                  
-                    │   254 │   │   # Market-wide data       │                  
-                    │   255 │   │   global_data   = self.get │                  
-                    │ ❱ 256 │   │   fear_greed    = self.get │                  
-                    │   257 │   │   gainers       = self.get │                  
-                    │   258 │   │   losers        = self.get │                  
-                    │   259 │   │   trending      = self.get │                  
-                    │                                        │                  
-                    │ /workspace/data/prism_client.py:124 in │                  
-                    │ get_fear_greed                         │                  
-                    │                                        │                  
-                    │   121 │                                │                  
-                    │   122 │   def get_fear_greed(self) ->  │                  
-                    │   123 │   │   """Real Fear & Greed ind │                  
-                    │ ❱ 124 │   │   return self._get("/marke │                  
-                    │   125 │                                │                  
-                    │   126 │   def get_gainers(self, limit: │                  
-                    │   127 │   │   """Top 24h gainers acros │                  
-                    │                                        │                  
-                    │ /workspace/data/prism_client.py:95 in  │                  
-                    │ _get                                   │                  
-                    │                                        │                  
-                    │    92 │   │   │   else:                │                  
-                    │    93 │   │   │   │   logger.warning(f │                  
-                    │    94 │   │   except requests.RequestE │                  
-                    │ ❱  95 │   │   │   logger.error(f"Prism │                  
-                    │    96 │   │   return None              │                  
-                    │    97 │                                │                  
-                    │    98 │   # ── Consensus prices ────── │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/logging/__init__.py:1549 in      │                  
-                    │ error                                  │                  
-                    │                                        │                  
-                    │   1546 │   │   logger.error("Houston,  │                  
-                    │   1547 │   │   """                     │                  
-                    │   1548 │   │   if self.isEnabledFor(ER │                  
-                    │ ❱ 1549 │   │   │   self._log(ERROR, ms │                  
-                    │   1550 │                               │                  
-                    │   1551 │   def exception(self, msg, *a │                  
-                    │   1552 │   │   """                     │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/logging/__init__.py:1665 in _log │                  
-                    │                                        │                  
-                    │   1662 │   │   │   │   exc_info = sys. │                  
-                    │   1663 │   │   record = self.makeRecor │                  
-                    │   1664 │   │   │   │   │   │   │   │   │                  
-                    │ ❱ 1665 │   │   self.handle(record)     │                  
-                    │   1666 │                               │                  
-                    │   1667 │   def handle(self, record):   │                  
-                    │   1668 │   │   """                     │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/logging/__init__.py:1681 in      │                  
-                    │ handle                                 │                  
-                    │                                        │                  
-                    │   1678 │   │   │   return              │                  
-                    │   1679 │   │   if isinstance(maybe_rec │                  
-                    │   1680 │   │   │   record = maybe_reco │                  
-                    │ ❱ 1681 │   │   self.callHandlers(recor │                  
-                    │   1682 │                               │                  
-                    │   1683 │   def addHandler(self, hdlr): │                  
-                    │   1684 │   │   """                     │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/logging/__init__.py:1737 in      │                  
-                    │ callHandlers                           │                  
-                    │                                        │                  
-                    │   1734 │   │   │   for hdlr in c.handl │                  
-                    │   1735 │   │   │   │   found = found + │                  
-                    │   1736 │   │   │   │   if record.level │                  
-                    │ ❱ 1737 │   │   │   │   │   hdlr.handle │                  
-                    │   1738 │   │   │   if not c.propagate: │                  
-                    │   1739 │   │   │   │   c = None    #br │                  
-                    │   1740 │   │   │   else:               │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/logging/__init__.py:1027 in      │                  
-                    │ handle                                 │                  
-                    │                                        │                  
-                    │   1024 │   │   │   record = rv         │                  
-                    │   1025 │   │   if rv:                  │                  
-                    │   1026 │   │   │   with self.lock:     │                  
-                    │ ❱ 1027 │   │   │   │   self.emit(recor │                  
-                    │   1028 │   │   return rv               │                  
-                    │   1029 │                               │                  
-                    │   1030 │   def setFormatter(self, fmt) │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/site-packages/rich/logging.py:16 │                  
-                    │ 7 in emit                              │                  
-                    │                                        │                  
-                    │   164 │   │   │   │   │   record.ascti │                  
-                    │   165 │   │   │   │   message = format │                  
-                    │   166 │   │                            │                  
-                    │ ❱ 167 │   │   message_renderable = sel │                  
-                    │   168 │   │   log_renderable = self.re │                  
-                    │   169 │   │   │   record=record, trace │                  
-                    │   170 │   │   )                        │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/site-packages/rich/logging.py:19 │                  
-                    │ 3 in render_message                    │                  
-                    │                                        │                  
-                    │   190 │   │   │   ConsoleRenderable: R │                  
-                    │   191 │   │   """                      │                  
-                    │   192 │   │   use_markup = getattr(rec │                  
-                    │ ❱ 193 │   │   message_text = Text.from │                  
-                    │   194 │   │                            │                  
-                    │   195 │   │   highlighter = getattr(re │                  
-                    │   196 │   │   if highlighter:          │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/site-packages/rich/text.py:287   │                  
-                    │ in from_markup                         │                  
-                    │                                        │                  
-                    │    284 │   │   """                     │                  
-                    │    285 │   │   from .markup import ren │                  
-                    │    286 │   │                           │                  
-                    │ ❱  287 │   │   rendered_text = render( │                  
-                    │    288 │   │   rendered_text.justify = │                  
-                    │    289 │   │   rendered_text.overflow  │                  
-                    │    290 │   │   rendered_text.end = end │                  
-                    │                                        │                  
-                    │ /root/.pyenv/versions/3.14.3/lib/pytho │                  
-                    │ n3.14/site-packages/rich/markup.py:167 │                  
-                    │  in render                             │                  
-                    │                                        │                  
-                    │   164 │   │   │   │   │   try:         │                  
-                    │   165 │   │   │   │   │   │   start, o │                  
-                    │   166 │   │   │   │   │   except KeyEr │                  
-                    │ ❱ 167 │   │   │   │   │   │   raise Ma │                  
-                    │   168 │   │   │   │   │   │   │   f"cl │                  
-                    │       match any open tag"              │                  
-                    │   169 │   │   │   │   │   │   ) from N │                  
-                    │   170 │   │   │   │   else:  # implici │                  
-                    ╰────────────────────────────────────────╯                  
-                    MarkupError: closing tag                                    
-                    '[/market/fear-greed]' at position 21                       
-                    doesn't match any open tag                                  
-[20:18:18] INFO     [MEME] Analysis triggered by:                    loop.py:207
-                    volatility(BONKUSD)                                         
-           INFO     [MEME] Invoking AI analysis...                   loop.py:210
-           INFO     AI analysis started (llama3-70b-8192) for    ai_brain.py:402
-                    [MEME]...                                                   
-[20:18:22] WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for top20                                         
-           WARNING  No CMC_API_KEY found in .env! Returning     cmc_client.py:30
-                    mock data for global_metrics                                
-Cycle 4 | PAPER | quiet | Capital: $10040.81 | Today P&L: +40.81 | Positions: 
-2/10 | Win rate: 38% (3W/0L)
-[20:18:23] INFO     HTTP Request: POST                           _client.py:1025
-                    https://api.groq.com/openai/v1/chat/completi                
-                    ons "HTTP/1.1 401 Unauthorized"                             
-           WARNING  API key invalid or expired (401) — Using     ai_brain.py:389
-                    MOCK Hackathon decision to simulate trade.                  
-           INFO     AI raw output (290 chars)                    ai_brain.py:433
-           INFO     AI decision: ENTER | confidence=0.95 |       ai_brain.py:435
-                    trades=1                                                    
-╭───────────────────────────── AI Analysis [MEME] ─────────────────────────────╮
-│ Decision: ENTER                                                              │
-│ Confidence: 95%                                                              │
-│ Context: Mock context                                                        │
-│ Reasoning: MOCK Hackathon trade due to invalid API key                       │
-│                                                                              │
-│ Trades:                                                                      │
-│   • PF_SOLUSD LONG | stop=10% | target=30%                                   │
-│     thesis: Mock trade for Hackathon demo                                    │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-                           Proposed Trades (MEME)                           
-┏━━━━━━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Symbol    ┃ Dir  ┃ Size% ┃ Stop ┃ Target ┃ Thesis                        ┃
-┡━━━━━━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ PF_SOLUSD │ long │ 0%    │ 10%  │ 30%    │ Mock trade for Hackathon demo │
-└───────────┴──────┴───────┴──────┴────────┴───────────────────────────────┘
-           INFO     [MEME] Kelly sizing: confidence=95% → size=4.75% loop.py:286
-                    of capital per trade                                        
-           INFO     [PAPER] BUY 5.6503 SOLUSD @ market        cli_wrapper.py:151
-           WARNING  CLI paper order failed, simulating:  position_manager.py:243
-                    CLI error (exit 2): Usage: kraken                           
-                    [OPTIONS] COMMAND [ARGS]...                                 
-                    Try 'kraken -h' for help.                                   
-                                                                                
-                    Error: No such command 'paper'.                             
-           INFO     [PAPER OPEN] LONG PF_SOLUSD |        position_manager.py:277
-                    entry=84.4100 | stop=75.9690 |                              
-                    target=109.7330 | size=$476.94                              
-           INFO     [MEME] Position opened: PF_SOLUSD | kelly=4.75%  loop.py:320
-                    | thesis: Mock trade for Hackathon demo                     
+Cycle 1 | PAPER | VOLATILE: PF_XRPUSD | Capital: $10040.81 | Today P&L: +40.81 |
+Positions: 3/10 | Win rate: 33% (3W/0L)
+[20:42:17] INFO     Shutdown signal received. Stopping agent          main.py:19
+                    cleanly...                                                  
+           ERROR    Task exception was never retrieved       base_events.py:1875
+                    future: <Task finished name='Task-4'                        
+                    coro=<TradingLoop.run() done, defined at                    
+                    /workspace/agent/loop.py:69>                                
+                    exception=SystemExit(0)>                                    
+                    ╭─ Traceback (most recent call last) ──╮                    
+                    │ /workspace/main.py:37 in <module>    │                    
+                    │                                      │                    
+                    │   34 │   logger.info(f"Dashboard API │                    
+                    │   35 │                               │                    
+                    │   36 │   loop = TradingLoop()        │                    
+                    │ ❱ 37 │   asyncio.run(loop.run())     │                    
+                    │   38                                 │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:203 in    │                    
+                    │ run                                  │                    
+                    │                                      │                    
+                    │   200 │   │   raise RuntimeError(    │                    
+                    │   201 │   │   │   "asyncio.run() can │                    
+                    │   202 │                              │                    
+                    │ ❱ 203 │   with Runner(debug=debug, l │                    
+                    │   204 │   │   return runner.run(main │                    
+                    │   205                                │                    
+                    │   206                                │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:63 in     │                    
+                    │ __exit__                             │                    
+                    │                                      │                    
+                    │    60 │   │   return self            │                    
+                    │    61 │                              │                    
+                    │    62 │   def __exit__(self, exc_typ │                    
+                    │ ❱  63 │   │   self.close()           │                    
+                    │    64 │                              │                    
+                    │    65 │   def close(self):           │                    
+                    │    66 │   │   """Shutdown and close  │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:71 in     │                    
+                    │ close                                │                    
+                    │                                      │                    
+                    │    68 │   │   │   return             │                    
+                    │    69 │   │   try:                   │                    
+                    │    70 │   │   │   loop = self._loop  │                    
+                    │ ❱  71 │   │   │   _cancel_all_tasks( │                    
+                    │    72 │   │   │   loop.run_until_com │                    
+                    │    73 │   │   │   loop.run_until_com │                    
+                    │    74 │   │   │   │   loop.shutdown_ │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:215 in    │                    
+                    │ _cancel_all_tasks                    │                    
+                    │                                      │                    
+                    │   212 │   for task in to_cancel:     │                    
+                    │   213 │   │   task.cancel()          │                    
+                    │   214 │                              │                    
+                    │ ❱ 215 │   loop.run_until_complete(ta │                    
+                    │   216 │                              │                    
+                    │   217 │   for task in to_cancel:     │                    
+                    │   218 │   │   if task.cancelled():   │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:706   │                    
+                    │ in run_until_complete                │                    
+                    │                                      │                    
+                    │    703 │   │                         │                    
+                    │    704 │   │   future.add_done_callb │                    
+                    │    705 │   │   try:                  │                    
+                    │ ❱  706 │   │   │   self.run_forever( │                    
+                    │    707 │   │   except:               │                    
+                    │    708 │   │   │   if new_task and f │                    
+                    │    709 │   │   │   │   # The corouti │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:677   │                    
+                    │ in run_forever                       │                    
+                    │                                      │                    
+                    │    674 │   │   self._run_forever_set │                    
+                    │    675 │   │   try:                  │                    
+                    │    676 │   │   │   while True:       │                    
+                    │ ❱  677 │   │   │   │   self._run_onc │                    
+                    │    678 │   │   │   │   if self._stop │                    
+                    │    679 │   │   │   │   │   break     │                    
+                    │    680 │   │   finally:              │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:2046  │                    
+                    │ in _run_once                         │                    
+                    │                                      │                    
+                    │   2043 │   │   │   │   finally:      │                    
+                    │   2044 │   │   │   │   │   self._cur │                    
+                    │   2045 │   │   │   else:             │                    
+                    │ ❱ 2046 │   │   │   │   handle._run() │                    
+                    │   2047 │   │   handle = None  # Need │                    
+                    │   2048 │                             │                    
+                    │   2049 │   def _set_coroutine_origin │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/events.py:94 in _run │                    
+                    │                                      │                    
+                    │    91 │                              │                    
+                    │    92 │   def _run(self):            │                    
+                    │    93 │   │   try:                   │                    
+                    │ ❱  94 │   │   │   self._context.run( │                    
+                    │    95 │   │   except (SystemExit, Ke │                    
+                    │    96 │   │   │   raise              │                    
+                    │    97 │   │   except BaseException a │                    
+                    │                                      │                    
+                    │ /workspace/agent/loop.py:72 in run   │                    
+                    │                                      │                    
+                    │    69 │   async def run(self):       │                    
+                    │    70 │   │   """Start all async loo │                    
+                    │    71 │   │   logger.info("Starting  │                    
+                    │       position monitor...")          │                    
+                    │ ❱  72 │   │   await asyncio.gather(  │                    
+                    │    73 │   │   │   self._trading_cycl │                    
+                    │    74 │   │   │   self._trading_cycl │                    
+                    │    75 │   │   │   self._trading_cycl │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:204 in    │                    
+                    │ run                                  │                    
+                    │                                      │                    
+                    │   201 │   │   │   "asyncio.run() can │                    
+                    │   202 │                              │                    
+                    │   203 │   with Runner(debug=debug, l │                    
+                    │ ❱ 204 │   │   return runner.run(main │                    
+                    │   205                                │                    
+                    │   206                                │                    
+                    │   207 def _cancel_all_tasks(loop):   │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/runners.py:127 in    │                    
+                    │ run                                  │                    
+                    │                                      │                    
+                    │   124 │   │                          │                    
+                    │   125 │   │   self._interrupt_count  │                    
+                    │   126 │   │   try:                   │                    
+                    │ ❱ 127 │   │   │   return self._loop. │                    
+                    │   128 │   │   except exceptions.Canc │                    
+                    │   129 │   │   │   if self._interrupt │                    
+                    │   130 │   │   │   │   uncancel = get │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:706   │                    
+                    │ in run_until_complete                │                    
+                    │                                      │                    
+                    │    703 │   │                         │                    
+                    │    704 │   │   future.add_done_callb │                    
+                    │    705 │   │   try:                  │                    
+                    │ ❱  706 │   │   │   self.run_forever( │                    
+                    │    707 │   │   except:               │                    
+                    │    708 │   │   │   if new_task and f │                    
+                    │    709 │   │   │   │   # The corouti │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:677   │                    
+                    │ in run_forever                       │                    
+                    │                                      │                    
+                    │    674 │   │   self._run_forever_set │                    
+                    │    675 │   │   try:                  │                    
+                    │    676 │   │   │   while True:       │                    
+                    │ ❱  677 │   │   │   │   self._run_onc │                    
+                    │    678 │   │   │   │   if self._stop │                    
+                    │    679 │   │   │   │   │   break     │                    
+                    │    680 │   │   finally:              │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/base_events.py:2046  │                    
+                    │ in _run_once                         │                    
+                    │                                      │                    
+                    │   2043 │   │   │   │   finally:      │                    
+                    │   2044 │   │   │   │   │   self._cur │                    
+                    │   2045 │   │   │   else:             │                    
+                    │ ❱ 2046 │   │   │   │   handle._run() │                    
+                    │   2047 │   │   handle = None  # Need │                    
+                    │   2048 │                             │                    
+                    │   2049 │   def _set_coroutine_origin │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/asyncio/events.py:94 in _run │                    
+                    │                                      │                    
+                    │    91 │                              │                    
+                    │    92 │   def _run(self):            │                    
+                    │    93 │   │   try:                   │                    
+                    │ ❱  94 │   │   │   self._context.run( │                    
+                    │    95 │   │   except (SystemExit, Ke │                    
+                    │    96 │   │   │   raise              │                    
+                    │    97 │   │   except BaseException a │                    
+                    │                                      │                    
+                    │ /workspace/agent/loop.py:95 in       │                    
+                    │ _trading_cycle_loop                  │                    
+                    │                                      │                    
+                    │    92 │   │   │   cycle_start = time │                    
+                    │    93 │   │   │                      │                    
+                    │    94 │   │   │   try:               │                    
+                    │ ❱  95 │   │   │   │   await self._ma │                    
+                    │    96 │   │   │   except Exception a │                    
+                    │    97 │   │   │   │   safe_e = str(e │                    
+                    │    98 │   │   │   │   logger.error(f │                    
+                    │                                      │                    
+                    │ /workspace/agent/loop.py:192 in      │                    
+                    │ _main_cycle                          │                    
+                    │                                      │                    
+                    │   189 │   │                          │                    
+                    │   190 │   │   # Update shared API st │                    
+                    │       conditions)                    │                    
+                    │   191 │   │   if loop_name == "PERP" │                    
+                    │ ❱ 192 │   │   │   self._push_state(s │                    
+                    │   193 │   │                          │                    
+                    │   194 │   │   # Prism strong signal  │                    
+                    │   195 │   │   prism_signals = prism_ │                    
+                    │                                      │                    
+                    │ /workspace/agent/loop.py:127 in      │                    
+                    │ _push_state                          │                    
+                    │                                      │                    
+                    │   124 │   │   │   "win_rate":     su │                    
+                    │   125 │   │   })                     │                    
+                    │   126 │   │   # Positions            │                    
+                    │ ❱ 127 │   │   open_pos = self.positi │                    
+                    │   128 │   │   shared_state._state["p │                    
+                    │   129 │   │   # Trade history        │                    
+                    │   130 │   │   shared_state._state["t │                    
+                    │       list(self.positions._state.get │                    
+                    │                                      │                    
+                    │ /workspace/agent/position_manager.py │                    
+                    │ :511 in get_open_positions           │                    
+                    │                                      │                    
+                    │   508 │   # ── Queries ───────────── │                    
+                    │   509 │                              │                    
+                    │   510 │   def get_open_positions(sel │                    
+                    │ ❱ 511 │   │   self.update_unrealized │                    
+                    │   512 │   │   return list(self._stat │                    
+                    │   513 │                              │                    
+                    │   514 │   def get_account_summary(se │                    
+                    │                                      │                    
+                    │ /workspace/agent/position_manager.py │                    
+                    │ :402 in update_unrealized_pnl        │                    
+                    │                                      │                    
+                    │   399 │   def update_unrealized_pnl( │                    
+                    │   400 │   │   """Refresh unrealized  │                    
+                    │   401 │   │   for pos_id, pos in lis │                    
+                    │ ❱ 402 │   │   │   price = self._get_ │                    
+                    │   403 │   │   │   if not price:      │                    
+                    │   404 │   │   │   │   continue       │                    
+                    │   405 │   │   │   if pos["direction" │                    
+                    │                                      │                    
+                    │ /workspace/agent/position_manager.py │                    
+                    │ :588 in _get_current_price           │                    
+                    │                                      │                    
+                    │   585 │                              │                    
+                    │   586 │   def _get_current_price(sel │                    
+                    │   587 │   │   try:                   │                    
+                    │ ❱ 588 │   │   │   candles = self.res │                    
+                    │   589 │   │   │   if candles:        │                    
+                    │   590 │   │   │   │   return float(c │                    
+                    │   591 │   │   except Exception as e: │                    
+                    │                                      │                    
+                    │ /workspace/kraken_wrappers/rest_clie │                    
+                    │ nt.py:39 in get_ohlc                 │                    
+                    │                                      │                    
+                    │    36 │   │   SDK v3+ returns the di │                    
+                    │    37 │   │   """                    │                    
+                    │    38 │   │   try:                   │                    
+                    │ ❱  39 │   │   │   data = self._spot_ │                    
+                    │    40 │   │   │   # SDK v3+ returns  │                    
+                    │    41 │   │   │   for key, val in da │                    
+                    │    42 │   │   │   │   if key != "las │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/kraken/spot/ma │                    
+                    │ rket.py:332 in get_ohlc              │                    
+                    │                                      │                    
+                    │   329 │   │   params: dict = {"pair" │                    
+                    │   330 │   │   if defined(since):     │                    
+                    │   331 │   │   │   params["since"] =  │                    
+                    │ ❱ 332 │   │   return self.request(   │                    
+                    │   333 │   │   │   method="GET",      │                    
+                    │   334 │   │   │   uri="/0/public/OHL │                    
+                    │   335 │   │   │   params=params,     │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/kraken/base_ap │                    
+                    │ i/__init__.py:384 in request         │                    
+                    │                                      │                    
+                    │    381 │   │                         │                    
+                    │    382 │   │   if method in {"GET",  │                    
+                    │    383 │   │   │   return self.__che │                    
+                    │ ❱  384 │   │   │   │   response=self │                    
+                    │    385 │   │   │   │   │   method=me │                    
+                    │    386 │   │   │   │   │   url=f"{ur │                    
+                    │    387 │   │   │   │   │   headers=h │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/requests/sessi │                    
+                    │ ons.py:592 in request                │                    
+                    │                                      │                    
+                    │   589 │   │   │   "allow_redirects": │                    
+                    │   590 │   │   }                      │                    
+                    │   591 │   │   send_kwargs.update(set │                    
+                    │ ❱ 592 │   │   resp = self.send(prep, │                    
+                    │   593 │   │                          │                    
+                    │   594 │   │   return resp            │                    
+                    │   595                                │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/requests/sessi │                    
+                    │ ons.py:706 in send                   │                    
+                    │                                      │                    
+                    │   703 │   │   start = preferred_cloc │                    
+                    │   704 │   │                          │                    
+                    │   705 │   │   # Send the request     │                    
+                    │ ❱ 706 │   │   r = adapter.send(reque │                    
+                    │   707 │   │                          │                    
+                    │   708 │   │   # Total elapsed time o │                    
+                    │   709 │   │   elapsed = preferred_cl │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/requests/adapt │                    
+                    │ ers.py:645 in send                   │                    
+                    │                                      │                    
+                    │   642 │   │   │   timeout = TimeoutS │                    
+                    │   643 │   │                          │                    
+                    │   644 │   │   try:                   │                    
+                    │ ❱ 645 │   │   │   resp = conn.urlope │                    
+                    │   646 │   │   │   │   method=request │                    
+                    │   647 │   │   │   │   url=url,       │                    
+                    │   648 │   │   │   │   body=request.b │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/urllib3/connec │                    
+                    │ tionpool.py:787 in urlopen           │                    
+                    │                                      │                    
+                    │    784 │   │   │   response_conn = c │                    
+                    │    785 │   │   │                     │                    
+                    │    786 │   │   │   # Make the reques │                    
+                    │ ❱  787 │   │   │   response = self._ │                    
+                    │    788 │   │   │   │   conn,         │                    
+                    │    789 │   │   │   │   method,       │                    
+                    │    790 │   │   │   │   url,          │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/urllib3/connec │                    
+                    │ tionpool.py:534 in _make_request     │                    
+                    │                                      │                    
+                    │    531 │   │                         │                    
+                    │    532 │   │   # Receive the respons │                    
+                    │    533 │   │   try:                  │                    
+                    │ ❱  534 │   │   │   response = conn.g │                    
+                    │    535 │   │   except (BaseSSLError, │                    
+                    │    536 │   │   │   self._raise_timeo │                    
+                    │    537 │   │   │   raise             │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/site-packages/urllib3/connec │                    
+                    │ tion.py:571 in getresponse           │                    
+                    │                                      │                    
+                    │    568 │   │   _shutdown = getattr(s │                    
+                    │    569 │   │                         │                    
+                    │    570 │   │   # Get the response fr │                    
+                    │ ❱  571 │   │   httplib_response = su │                    
+                    │    572 │   │                         │                    
+                    │    573 │   │   try:                  │                    
+                    │    574 │   │   │   assert_header_par │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/http/client.py:1450 in       │                    
+                    │ getresponse                          │                    
+                    │                                      │                    
+                    │   1447 │   │                         │                    
+                    │   1448 │   │   try:                  │                    
+                    │   1449 │   │   │   try:              │                    
+                    │ ❱ 1450 │   │   │   │   response.begi │                    
+                    │   1451 │   │   │   except Connection │                    
+                    │   1452 │   │   │   │   self.close()  │                    
+                    │   1453 │   │   │   │   raise         │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/http/client.py:336 in begin  │                    
+                    │                                      │                    
+                    │    333 │   │                         │                    
+                    │    334 │   │   # read until we get a │                    
+                    │    335 │   │   while True:           │                    
+                    │ ❱  336 │   │   │   version, status,  │                    
+                    │    337 │   │   │   if status != CONT │                    
+                    │    338 │   │   │   │   break         │                    
+                    │    339 │   │   │   # skip the header │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/http/client.py:297 in        │                    
+                    │ _read_status                         │                    
+                    │                                      │                    
+                    │    294 │   │   self.will_close = _UN │                    
+                    │    295 │                             │                    
+                    │    296 │   def _read_status(self):   │                    
+                    │ ❱  297 │   │   line = str(self.fp.re │                    
+                    │    298 │   │   if len(line) > _MAXLI │                    
+                    │    299 │   │   │   raise LineTooLong │                    
+                    │    300 │   │   if self.debuglevel >  │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/socket.py:725 in readinto    │                    
+                    │                                      │                    
+                    │   722 │   │   if self._timeout_occur │                    
+                    │   723 │   │   │   raise OSError("can │                    
+                    │   724 │   │   try:                   │                    
+                    │ ❱ 725 │   │   │   return self._sock. │                    
+                    │   726 │   │   except timeout:        │                    
+                    │   727 │   │   │   self._timeout_occu │                    
+                    │   728 │   │   │   raise              │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/ssl.py:1304 in recv_into     │                    
+                    │                                      │                    
+                    │   1301 │   │   │   │   raise ValueEr │                    
+                    │   1302 │   │   │   │     "non-zero f │                    
+                    │   1303 │   │   │   │     self.__clas │                    
+                    │ ❱ 1304 │   │   │   return self.read( │                    
+                    │   1305 │   │   else:                 │                    
+                    │   1306 │   │   │   return super().re │                    
+                    │   1307                               │                    
+                    │                                      │                    
+                    │ /root/.pyenv/versions/3.14.3/lib/pyt │                    
+                    │ hon3.14/ssl.py:1138 in read          │                    
+                    │                                      │                    
+                    │   1135 │   │   │   raise ValueError( │                    
+                    │   1136 │   │   try:                  │                    
+                    │   1137 │   │   │   if buffer is not  │                    
+                    │ ❱ 1138 │   │   │   │   return self._ │                    
+                    │   1139 │   │   │   else:             │                    
+                    │   1140 │   │   │   │   return self._ │                    
+                    │   1141 │   │   except SSLError as x: │                    
+                    │                                      │                    
+                    │ /workspace/main.py:20 in handle_exit │                    
+                    │                                      │                    
+                    │   17                                 │                    
+                    │   18 def handle_exit(sig, frame):    │                    
+                    │   19 │   logger.info("Shutdown signa │                    
+                    │ ❱ 20 │   sys.exit(0)                 │                    
+                    │   21                                 │                    
+                    │   22                                 │                    
+                    │   23 if __name__ == "__main__":      │                    
+                    ╰──────────────────────────────────────╯                    
+                    SystemExit: 0                                               
